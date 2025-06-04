@@ -82,90 +82,132 @@ Defines each unique round condition.
 
 All logs are stored in the `Data/Logs/` directory as CSV files.
 
-### 1. Round Log (`RoundData_*.csv`)
+# Lead Rush Logging Format
 
-- **One row per round (saved after QoE is submitted)**
-- **Columns (most important fields):**
+## 1. Round Log (`RoundData_*.csv`)
 
-| Column                    | Type        | Units/Values         | Description                                  |
-|---------------------------|-------------|----------------------|----------------------------------------------|
-| sessionID                 | int         |                      | Session ID                                   |
-| LatinRow                  | int         |                      | Row in round config (Latin square)           |
-| currentRoundNumber        | int         |                      | Current round index                          |
-| sessionStartTime          | string      | timestamp            | Session start time                           |
-| currentTime               | string      | timestamp            | Log entry timestamp                          |
-| roundFPS                  | float       | Hz                   | Target framerate                             |
-| spikeMagnitude            | float       | ms                   | Simulated spike magnitude                    |
-| onAimSpikeEnabled         | bool        | TRUE/FALSE           | Spike when aiming                            |
-| onEnemySpawnSpikeEnabled  | bool        | TRUE/FALSE           | Spike on enemy spawn                         |
-| onMouseSpikeEnabled       | bool        | TRUE/FALSE           | Spike on mouse movement                      |
-| onReloadSpikeEnabled      | bool        | TRUE/FALSE           | Spike on reload                              |
-| indexArray                | int         |                      | Config index after shuffle                   |
-| score                     | int         |                      | Player score                                 |
-| shotsFired                | int         |                      | Shots fired                                  |
-| shotsHit                  | int         |                      | Shots hit                                    |
-| headshots                 | int         |                      | Headshots                                    |
-| reloadCount               | int         |                      | Reload count                                 |
-| tacticalReloadCount       | int         |                      | Tactical reloads                             |
-| accuracy                  | float       | ratio                | shotsHit/shotsFired                          |
-| roundKills                | int         |                      | Kills                                        |
-| roundDeaths               | int         |                      | Deaths                                       |
-| distanceTravelledPerRound | float       | Unity units          | Distance travelled                           |
-| delXCumilative            | float       |                      | Cumulative mouse X                           |
-| delYCumilative            | float       |                      | Cumulative mouse Y                           |
-| totalMouseMovement        | float       |                      | delXCumilative + delYCumilative              |
-| frametimeCumulativeRound  | float       | ms                   | Total frametime                              |
-| roundFrameCount           | int         |                      | Total frames                                 |
-| avgFT                     | float       | ms                   | Average frametime                            |
-| avgFPS                    | float       | Hz                   | Average FPS                                  |
-| perRoundAimSpikeCount     | int         |                      | # spikes on aim                              |
-| perRoundReloadSpikeCount  | int         |                      | # spikes on reload                           |
-| perRoundMouseMovementSpikeCount | int   |                      | # spikes on mouse movement                   |
-| perRoundEnemySpawnSpikeCount | int      |                      | # spikes on enemy spawn                      |
-| spikeDurationCumulative   | float       | ms                   | Total duration of all spikes                 |
-| avgSpikeDurationCumulative| float       | ms                   | Avg spike duration (per round)               |
-| degreeToShootXCumulative  | float       | degrees              | Cumulative degree shooting                   |
-| degreeToTargetXCumulative | float       | degrees              | Cumulative degree aiming                     |
-| ...many more fields for angles, timings, and averages...         |
-| qoeValue                  | int/float   | 1–5                  | Quality of Experience (self-report)          |
-| acceptabilityValue        | bool        | TRUE/FALSE           | Round acceptable (self-report)               |
-
-- **Logged:** Once per round, after QoE response
-
----
-
-### 2. Player Log (`PlayerData_*.csv`)
-
-- **One row per game tick, flushed after each round**
-- **Columns:**
-  - sessionID, currentRoundNumber, roundFPS, spikeMagnitude,
-  - onAimSpikeEnabled, onEnemySpawnSpikeEnabled, onMouseSpikeEnabled, onReloadSpikeEnabled,
-  - indexArray, roundTimer, time, mouseX, mouseY,
-  - playerX, playerY, playerZ, scorePerSec,
-  - playerRot (w,x,y,z), enemyPos (x,y,z), frametimeMS, isADS (bool, aiming down sights)
-- **Logged:** Every game tick (written at round end)
+| Field                          | Type      | Units/Values       | Description                                             |
+|---------------------------------|-----------|--------------------|---------------------------------------------------------|
+| sessionID                      | int       |                    | Unique session identifier                               |
+| LatinRow                       | int       |                    | Which Latin square row is used for this session         |
+| currentRoundNumber             | int       |                    | Current round in session                                |
+| sessionStartTime               | string    | timestamp          | When session started                                    |
+| currentTime                    | string    | timestamp          | Time of log entry                                       |
+| roundFPS                       | float     | Hz                 | Target framerate for round                              |
+| spikeMagnitude                 | float     | ms                 | Frametime spike magnitude                               |
+| onAimSpikeEnabled              | bool      | TRUE/FALSE         | Spike on aiming enabled                                 |
+| onEnemySpawnSpikeEnabled       | bool      | TRUE/FALSE         | Spike on enemy spawn enabled                            |
+| onMouseSpikeEnabled            | bool      | TRUE/FALSE         | Spike on mouse movement enabled                         |
+| onReloadSpikeEnabled           | bool      | TRUE/FALSE         | Spike on reload enabled                                 |
+| indexArray                     | int       |                    | Shuffled config index                                   |
+| score                          | int       |                    | Player score for round                                  |
+| shotsFired                     | int       |                    | Shots fired                                             |
+| shotsHit                       | int       |                    | Successful hits                                         |
+| headshots                      | int       |                    | Headshots                                               |
+| reloadCount                    | int       |                    | Reloads performed                                       |
+| tacticalReloadCount            | int       |                    | Tactical reloads performed                              |
+| accuracy                       | float     | 0-1                | shotsHit/shotsFired                                     |
+| roundKills                     | int       |                    | Kills this round                                        |
+| roundDeaths                    | int       |                    | Deaths this round                                       |
+| distanceTravelledPerRound      | float     | Unity units        | Distance traveled                                       |
+| delXCumilative                 | float     |                    | Cumulative mouse X movement                             |
+| delYCumilative                 | float     |                    | Cumulative mouse Y movement                             |
+| totalMouseMovement             | float     |                    | delXCumilative + delYCumilative                         |
+| frametimeCumulativeRound       | float     | ms                 | Cumulative frame time                                   |
+| roundFrameCount                | int       |                    | Number of frames                                        |
+| avgFT                          | float     | ms                 | Average frame time                                      |
+| avgFPS                         | float     | Hz                 | Average FPS                                             |
+| perRoundAimSpikeCount          | int       |                    | Aim spikes triggered                                    |
+| perRoundReloadSpikeCount       | int       |                    | Reload spikes triggered                                 |
+| perRoundMouseMovementSpikeCount| int       |                    | Mouse spikes triggered                                  |
+| perRoundEnemySpawnSpikeCount   | int       |                    | Enemy spawn spikes triggered                            |
+| spikeDurationCumulative        | float     | ms                 | Total spike duration                                    |
+| avgSpikeDurationCumulative     | float     | ms                 | Avg. individual spike duration                          |
+| degreeToShootXCumulative       | float     | degrees            | Cumulative deg. to shoot                                |
+| degreeToTargetXCumulative      | float     | degrees            | Cumulative deg. to target                               |
+| minAnlgeToEnemyCumulative      | float     | degrees            | Cumulative min angle to enemy                           |
+| enemySizeCumulative            | float     | Unity units        | Cumulative enemy size in view                           |
+| degXShootAvg                   | float     | degrees            | Avg. deg. to shoot                                      |
+| degXTargetAvg                  | float     | degrees            | Avg. deg. to target                                     |
+| enemySizeOnSpawnAvg            | float     | Unity units        | Avg. enemy size at spawn                                |
+| timeToTargetEnemyCumulative    | float     | seconds            | Total time to target enemy                              |
+| timeToHitEnemyCumulative       | float     | seconds            | Total time to hit enemy                                 |
+| timeToKillEnemyCumulative      | float     | seconds            | Total time to kill enemy                                |
+| aimDurationPerRound            | float     | seconds            | Total time aiming                                       |
+| isFiringDurationPerRound       | float     | seconds or ms      | Total time firing                                       |
+| qoeValue                       | int/float | 1-5                | Player-reported QoE                                     |
+| acceptabilityValue             | bool      | TRUE/FALSE         | Player found round acceptable                           |
 
 ---
 
-### 3. Enemy Log (`ShotData_*.csv`)
+## 2. Player Log (`PlayerData_*.csv`)
 
-- **One row per enemy destroyed (or at round end)**
-- **Columns (examples):**
-  - sessionID, currentRoundNumber, sessionStartTime, currentTime,
-  - roundFPS, spikeMagnitude, onAimSpikeEnabled, onEnemySpawnSpikeEnabled, onMouseSpikeEnabled, onReloadSpikeEnabled, indexArray,
-  - currentHealth, minAngleToPlayer, angularSizeOnSpawn, degreeToTargetX/Y, degreeToShootX/Y,
-  - timeToTargetEnemy, timeToHitEnemy, timeToKillEnemy,
-  - targetMarked, targetShot (bool)
-- **Logged:** When an enemy is destroyed (including at round end).
+| Field         | Type        | Units/Values  | Description                                      |
+|---------------|-------------|---------------|--------------------------------------------------|
+| sessionID     | int         |               | Session ID                                       |
+| currentRoundNumber | int     |               | Current round                                    |
+| roundFPS      | float       | Hz            | Target framerate                                 |
+| spikeMagnitude| float       | ms            | Spike magnitude                                  |
+| onAimSpikeEnabled | bool    | TRUE/FALSE    | Spike on aiming enabled                          |
+| onEnemySpawnSpikeEnabled | bool | TRUE/FALSE| Spike on enemy spawn enabled                     |
+| onMouseSpikeEnabled | bool  | TRUE/FALSE    | Spike on mouse movement enabled                  |
+| onReloadSpikeEnabled | bool | TRUE/FALSE    | Spike on reload enabled                          |
+| indexArray    | int         |               | Shuffled config index                            |
+| roundTimer    | float       | seconds       | Time since round started                         |
+| time          | string      | timestamp     | Time of log entry                                |
+| mouseX        | float       |               | Mouse movement X                                 |
+| mouseY        | float       |               | Mouse movement Y                                 |
+| playerX       | float       | Unity units   | Player position X                                |
+| playerY       | float       | Unity units   | Player position Y                                |
+| playerZ       | float       | Unity units   | Player position Z                                |
+| scorePerSec   | float       | points/sec    | Score accumulated per second                     |
+| playerRot.w   | float       |               | Player rotation quaternion w                     |
+| playerRot.x   | float       |               | Player rotation quaternion x                     |
+| playerRot.y   | float       |               | Player rotation quaternion y                     |
+| playerRot.z   | float       |               | Player rotation quaternion z                     |
+| enemyPos.x    | float       | Unity units   | Enemy position X                                 |
+| enemyPos.y    | float       | Unity units   | Enemy position Y                                 |
+| enemyPos.z    | float       | Unity units   | Enemy position Z                                 |
+| frametimeMS   | double      | ms            | Frame time (per tick)                            |
+| isADS         | bool        | TRUE/FALSE    | Aiming down sights at this tick                  |
 
 ---
 
-## Summary
+## 3. Enemy Log (`ShotData_*.csv` or similar)
 
-- **Ultra-high framerate FPS** for user studies (up to 1500 Hz).
-- **Fully configurable** via CSV files (global, per-round, session).
-- **Comprehensive, timestamped logs** of all player and game actions.
-- **Counterbalanced round assignment** using Latin square + map system.
-- **Open-source and ready for laboratory or field user studies.**
+| Field                | Type      | Units/Values       | Description                                    |
+|----------------------|-----------|--------------------|------------------------------------------------|
+| sessionID            | int       |                    | Session ID                                     |
+| currentRoundNumber   | int       |                    | Current round                                  |
+| sessionStartTime     | string    | timestamp          | Session start time                             |
+| currentTime          | string    | timestamp          | Log entry time                                 |
+| roundFPS             | float     | Hz                 | Target framerate                               |
+| spikeMagnitude       | float     | ms                 | Spike magnitude                                |
+| onAimSpikeEnabled    | bool      | TRUE/FALSE         | Spike on aiming enabled                        |
+| onEnemySpawnSpikeEnabled | bool  | TRUE/FALSE         | Spike on enemy spawn enabled                   |
+| onMouseSpikeEnabled  | bool      | TRUE/FALSE         | Spike on mouse movement enabled                |
+| onReloadSpikeEnabled | bool      | TRUE/FALSE         | Spike on reload enabled                        |
+| indexArray           | int       |                    | Shuffled config index                          |
+| currentHealth        | float     | (unitless)         | Enemy's health at time of log                  |
+| minAngleToPlayer     | float     | degrees            | Minimum angle to player                        |
+| angularSizeOnSpawn   | float     | degrees            | Enemy's size in FOV at spawn                   |
+| degreeToTargetX      | float     | degrees            | Horizontal angle: enemy to player              |
+| degreeToTargetY      | float     | degrees            | Vertical angle: enemy to player                |
+| degreeToShootX       | float     | degrees            | Horizontal angle at shot                       |
+| degreeToShootY       | float     | degrees            | Vertical angle at shot                         |
+| timeToTargetEnemy    | float     | seconds            | Time to initially aim at enemy                 |
+| timeToHitEnemy       | float     | seconds            | Time to first hit enemy                        |
+| timeToKillEnemy      | float     | seconds            | Time to kill enemy                             |
+| targetMarked         | bool      | TRUE/FALSE         | Player aimed at enemy                          |
+| targetShot           | bool      | TRUE/FALSE         | Player shot enemy                              |
 
-For demo videos, log/CSV examples, or further documentation, see the links at the top of this file.
+---
+
+## Logging Frequency
+
+- **Round Log:** Once per round, after QoE is submitted.
+- **Player Log:** Every game tick (written at round end).
+- **Enemy Log:** Each time an enemy is destroyed (also at round end).
+
+---
+
