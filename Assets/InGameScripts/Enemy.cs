@@ -34,7 +34,7 @@ public class Enemy : MonoBehaviour
     public GameObject enemyHead;
 
     public float angularSizeOnSpawn;
-
+    public SphereCollider headCollider;
 
 
     // Start is called before the first frame update
@@ -47,8 +47,8 @@ public class Enemy : MonoBehaviour
 
         maxHealth = playerController.enemyHealthGlobal;
         currentHealth = maxHealth;
-        
 
+        headCollider = headTransform.GetComponent<SphereCollider>();
 
         var relativePos = this.transform.position - player.transform.position;
 
@@ -57,6 +57,10 @@ public class Enemy : MonoBehaviour
         angularSizeOnSpawn = playerController.CalculateAngularSize(enemyHead, playerController.mainCamera.position);
 
         enemyAgent.speed = playerController.enemySpeedGlobal;
+
+        player.GetComponent<FPSController>().currentEnemyHead = enemyHead;
+
+        player.GetComponent<FPSController>().roundManager.attributeScalingModule.enemyCollider = enemyHead.GetComponent<SphereCollider>();
     }
 
     // Update is called once per frame
@@ -66,6 +70,13 @@ public class Enemy : MonoBehaviour
             return;
         enemyAgent.destination = player.transform.position;
 
+        if (Vector3.Distance(player.transform.position, headCollider.transform.position) <1.75)
+        {
+            Instantiate(explodePE, headTransform.position, headTransform.rotation);
+            player.GetComponent<FPSController>().PlayDeathSFX();
+            player.GetComponent<FPSController>().RespawnPlayer();
+        }
+
         //float angularSize =  playerController.CalculateAngularSize(enemyHead, playerController.mainCamera.position);
 
         //Debug.Log("Angular size: " + angularSize);
@@ -73,6 +84,8 @@ public class Enemy : MonoBehaviour
         largeCollider.transform.localScale = new Vector3(2.5F + Mathf.PingPong(Time.time, 1.0f),1,1);
 
         //Debug.Log("Min: " + minAngleToPlayer);
+
+        
     }
 
     public void TakeDamage(float damage)
@@ -103,7 +116,7 @@ public class Enemy : MonoBehaviour
 
             fPSController.score += fPSController.onKillScore;
             fPSController.roundKills++;
-
+            fPSController.timeTillLastKill = 0f;
             Destroy(gameObject);
         }
     }
@@ -111,12 +124,12 @@ public class Enemy : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         //Debug.Log("Enemycol: " + other.gameObject.name);
-        if (other.gameObject.tag == "Player")
+        /*if (other.gameObject.tag == "Player")
         {
             Instantiate(explodePE, headTransform.position, headTransform.rotation);
             player.GetComponent<FPSController>().PlayDeathSFX();
             player.GetComponent<FPSController>().RespawnPlayer();
-        }
+        }*/
     }
 
     public void EnemyLog()
@@ -145,6 +158,7 @@ public class Enemy : MonoBehaviour
                roundManager.roundConfigs.onEnemySpawnSpikeEnabled[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.roundConfigs.onMouseSpikeEnabled[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.roundConfigs.onReloadSpikeEnabled[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
+               roundManager.roundConfigs.attributeScalingEnabled[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.indexArray[roundManager.currentRoundNumber - 1].ToString() + "," +
            currentHealth.ToString() + "," +
            minAngleToPlayer.ToString() + "," +

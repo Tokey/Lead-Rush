@@ -7,7 +7,6 @@ using UnityEngine.AI;
 public class EnemyManager : MonoBehaviour
 {
     public GameObject enemy;
-
     public GameObject player;
     public FPSController playerController;
     public List<Transform> sapwnPoints;
@@ -91,7 +90,6 @@ public class EnemyManager : MonoBehaviour
         Vector3 spawnPos = CalculateDistantPoint(player.transform.position, dist, angle);
 
         SpawnNavMeshAgent(enemy, spawnPos);
-
         if (playerController.isEnemySpawnSpikeEnabled)
         {
             playerController.gameManager.isEventBasedDelay = true;
