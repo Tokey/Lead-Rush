@@ -2745,15 +2745,15 @@ PrefabInstance:
       objectReference: {fileID: 8300000, guid: 1ba0f255fac52b34082fccd491998ad0, type: 3}
     - target: {fileID: 1565341202201293845, guid: 09dfc55288e2c514d98ea3b20e78195b, type: 3}
       propertyPath: magSize
-      value: 11
+      value: 31
       objectReference: {fileID: 0}
     - target: {fileID: 1565341202201293845, guid: 09dfc55288e2c514d98ea3b20e78195b, type: 3}
       propertyPath: fireMode
-      value: 0
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 1565341202201293845, guid: 09dfc55288e2c514d98ea3b20e78195b, type: 3}
       propertyPath: fireRate
-      value: 200
+      value: 750
       objectReference: {fileID: 0}
     - target: {fileID: 1565341202201293845, guid: 09dfc55288e2c514d98ea3b20e78195b, type: 3}
       propertyPath: shootPoint
@@ -2761,11 +2761,11 @@ PrefabInstance:
       objectReference: {fileID: 124820538}
     - target: {fileID: 1565341202201293845, guid: 09dfc55288e2c514d98ea3b20e78195b, type: 3}
       propertyPath: bulletDamage
-      value: 100
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 1565341202201293845, guid: 09dfc55288e2c514d98ea3b20e78195b, type: 3}
       propertyPath: currentAmmoCount
-      value: 10
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 1732668817856255823, guid: 09dfc55288e2c514d98ea3b20e78195b, type: 3}
       propertyPath: m_IsActive

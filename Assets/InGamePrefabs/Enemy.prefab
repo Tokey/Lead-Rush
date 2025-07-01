@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 5892144888736401205}
   - component: {fileID: 2777856657161198243}
   - component: {fileID: 6626452350407547043}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Enemy
   m_TagString: Enemy
   m_Icon: {fileID: 0}
@@ -477,7 +477,7 @@ GameObject:
   - component: {fileID: 3929484666170759525}
   - component: {fileID: 9019736675665305348}
   - component: {fileID: 7596769846423713771}
-  m_Layer: 3
+  m_Layer: 8
   m_Name: Head
   m_TagString: EnemyHead
   m_Icon: {fileID: 0}
@@ -729,6 +729,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: EnemyPE
       objectReference: {fileID: 0}
+    - target: {fileID: 772076673241458492, guid: a4912a9cfc6cc5b4e829e7faa12dce77, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 3235152964689556967, guid: a4912a9cfc6cc5b4e829e7faa12dce77, type: 3}
       propertyPath: m_LocalScale.x
       value: 0.2
@@ -802,6 +806,14 @@ PrefabInstance:
     - target: {fileID: 1533138625715334, guid: 61bb62591466c3649bdf4905822d72f6, type: 3}
       propertyPath: m_Name
       value: PressurisedSteam
+      objectReference: {fileID: 0}
+    - target: {fileID: 1533138625715334, guid: 61bb62591466c3649bdf4905822d72f6, type: 3}
+      propertyPath: m_Layer
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 1824827258223664, guid: 61bb62591466c3649bdf4905822d72f6, type: 3}
+      propertyPath: m_Layer
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 1824827258223664, guid: 61bb62591466c3649bdf4905822d72f6, type: 3}
       propertyPath: m_IsActive
