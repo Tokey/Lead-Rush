@@ -18,6 +18,10 @@
 
 ---
 
+## How To Install
+- Download one of the releases
+- Run LeadRush.exe
+
 ## Configuration Files
 
 All configuration files are located in `Data/Configs/`. They control the overall experiment setup, per-round conditions, and session tracking.
