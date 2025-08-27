@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.Windows;
+using static AttributeScaling;
 
 [System.Serializable]
 public struct RoundConfigs
@@ -16,6 +17,48 @@ public struct RoundConfigs
     public List<bool> onMouseSpikeEnabled;
     public List<bool> onEnemySpawnSpikeEnabled;
     public List<bool> attributeScalingEnabled;
+}
+
+//ShootingEventLog
+
+
+[System.Serializable]
+public struct ShootingEventLog
+{
+    public List<string> time;
+    public List<float> roundTimer;
+    public List<float> mouseX;
+    public List<float> mouseY;
+
+    public List<float> playerX;
+    public List<float> playerY;
+    public List<float> playerZ;
+
+    public List<Quaternion> playerRot;
+
+    public List<Vector3> enemyPos;
+    public List<Vector3> muzzlePos;
+
+    public List<int> teleportationCount;
+
+    public List<bool> isEnemyDead;
+
+    public List<float> distanceToPlayer;
+
+    public List<float> targetTimeOnEnemy;
+
+    public List<float> mouseMovedX;
+    public List<float> mouseMovedY;
+
+    public List<int> shotsFiredPerEvent;
+    public List<int> shotsHitPerEvent;
+    public List<int> shotsMissedPerEvent;
+
+
+    public List<float> durationOfEventNotIncludingSpikes;
+    public List<float> durationOfEventIncludingSpikes;
+    public List<int> spikeCountPerEvent;
+    public List<float> angularDistanceFromEnemyOnStart;
 }
 
 [System.Serializable]
@@ -35,8 +78,18 @@ public struct PlayerTickLog
     public List<Vector3> enemyPos;
     public List<bool> isADS;
 
+    public List<float> muzzleX;
+    public List<float> muzzleY;
+    public List<float> muzzleZ;
+
+    public List<float> targetAngleToEnemy;
+    public List<bool> validMissContinious;
+
     public List<float> scorePerSec;
     public List<double> frameTimeMS;
+
+    public List<bool> playerOnTarget;
+    public List<float> onTargetDuration;
 }
 
 [System.Serializable]
@@ -87,6 +140,11 @@ public struct PerShotLog
 
     public List<float> elapsedTimeFromLastSpike;
 
+    public List<float> horizontalMissAngle;
+    public List<float> verticalMissAngle;
+    public List<bool> isEnemyInFront;
+    public List<float> elapsedTimeSinceLastEventIncludingSpike;
+    public List<float> elapsedTimeSinceLastEventExcludingSpike;
 }
 
 public class RoundManager : MonoBehaviour
@@ -480,197 +538,347 @@ public class RoundManager : MonoBehaviour
         playerController.isEnemySpawnSpikeEnabled = roundConfigs.onEnemySpawnSpikeEnabled[indexArray[currentRoundNumber - 1]];
 
         gameManager.delayDuration = roundConfigs.spikeMagnitude[indexArray[currentRoundNumber - 1]];
-
+        attributeScalingModule.spikeMagnitude = roundConfigs.spikeMagnitude[indexArray[currentRoundNumber - 1]];
         attributeScalingModule.useAttributeScaling = roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]];
         attributeScalingModule.attributeScalingDuration = roundConfigs.spikeMagnitude[indexArray[currentRoundNumber - 1]] / 1000.0f;
         roundFrameCount = 0;
         frametimeCumulativeRound = 0;
 
     }
-
     public void LogRoundData()
     {
         PlayerStats stats = playerController.gameObject.GetComponent<PlayerStats>();
 
-        TextWriter textWriter = null;
-        filenamePerRound = "Data\\Logs\\RoundData_" + fileNameSuffix + "_" + sessionID + "_" + ".csv";
+        string filenamePerRound = "Data\\Logs\\RoundData_" + fileNameSuffix + "_" + sessionID + "_" + ".csv";
+        bool fileExists = System.IO.File.Exists(filenamePerRound);
 
-        while (textWriter == null)
-            textWriter = System.IO.File.AppendText(filenamePerRound);
-
-        float accuracy = 0;
-        if (playerController.shotsFiredPerRound > 0)
+        using (var textWriter = new StreamWriter(filenamePerRound, append: true))
         {
-            accuracy = (float)playerController.shotsHitPerRound / (float)playerController.shotsFiredPerRound;
+            if (!fileExists)
+            {
+                string header =
+                    "sessionID,latinRow,currentRoundNumber,sessionStartTime,now,roundFPS,spikeMagnitude," +
+                    "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," +
+                    "indexArray,score,shotsFiredPerRound,shotsHitPerRound,headshotsHitPerRound,realoadCountPerRound," +
+                    "tacticalReloadCountPerRound,accuracy,roundKills,roundDeaths,distanceTravelledPerRound,delXCumilative,delYCumilative," +
+                    "totalDelXY,frametimeCumulativeRound,roundFrameCount,avgFT,avgFPS,perRoundAimSpikeCount,perRoundReloadSpikeCount," +
+                    "perRoundMouseMovementSpikeCount,spikeDurationCumulative,avgspikeDurationCumulative,perRoundEnemySpawnSpikeCount," +
+                    "degreeToShootXCumulative,degreeToTargetXCumulative,minAnlgeToEnemyCumulative,enemySizeCumulative,timeToTargetEnemyCumulative," +
+                    "timeToHitEnemyCumulative,timeToKillEnemyCumulative,degXShootAvg,degXTargetAvg,enemySizeOnSpawnAvg,aimDurationPerRound," +
+                    "isFiringDurationPerRound,qoeValue,acceptabilityValue";
+                textWriter.WriteLine(header);
+            }
+
+            float accuracy = 0;
+            if (playerController.shotsFiredPerRound > 0)
+            {
+                accuracy = (float)playerController.shotsHitPerRound / (float)playerController.shotsFiredPerRound;
+            }
+
+            float degXTargetAvg = (float)playerController.degreeToTargetXCumulative / (float)playerController.roundKills;
+            float degXShootAvg = (float)playerController.degreeToShootXCumulative / (float)playerController.roundKills;
+            float enemySizeOnSpawnAvg = (float)playerController.enemySizeCumulative / (float)playerController.roundKills;
+
+            float timeToTargetAvg = (float)playerController.timeToTargetEnemyCumulative / (float)playerController.roundKills;
+            float timeToHitAvg = (float)playerController.timeToHitEnemyCumulative / (float)playerController.roundKills;
+            float timeToKillAvg = (float)playerController.timeToKillEnemyCumulative / (float)playerController.roundKills;
+            double avgspikeDurationCumulative = 0;
+            if (playerController.perRoundAimSpikeCount + playerController.perRoundReloadSpikeCount + playerController.perRoundMouseMovementSpikeCount > 0)
+                avgspikeDurationCumulative = (float)playerController.spikeDurationCumulative / (float)(playerController.perRoundAimSpikeCount + playerController.perRoundReloadSpikeCount + playerController.perRoundMouseMovementSpikeCount);
+            double avgFT = frametimeCumulativeRound / roundFrameCount;
+            double avgFPS = 1 / avgFT;
+
+            String roundLogLine =
+                sessionID.ToString() + "," +
+                latinRow.ToString() + "," +
+                currentRoundNumber.ToString() + "," +
+                sessionStartTime.ToString() + "," +
+                System.DateTime.Now.ToString() + "," +
+                roundConfigs.roundFPS[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                roundConfigs.spikeMagnitude[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                roundConfigs.onAimSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                roundConfigs.onEnemySpawnSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                roundConfigs.onMouseSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                roundConfigs.onReloadSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                indexArray[currentRoundNumber - 1].ToString() + "," +
+                playerController.score + "," +
+                playerController.shotsFiredPerRound + "," +
+                playerController.shotsHitPerRound + "," +
+                playerController.headshotsHitPerRound + "," +
+                playerController.reloadCountPerRound + "," +
+                playerController.tacticalReloadCountPerRound + "," +
+                accuracy.ToString() + "," +
+                playerController.roundKills + "," +
+                playerController.roundDeaths + "," +
+                playerController.distanceTravelledPerRound + "," +
+                playerController.delXCumilative.ToString() + "," +
+                playerController.delYCumilative.ToString() + "," +
+                (playerController.delXCumilative + playerController.delYCumilative).ToString() + "," +
+                frametimeCumulativeRound.ToString() + "," +
+                roundFrameCount.ToString() + "," +
+                avgFT.ToString() + "," +
+                avgFPS.ToString() + "," +
+                playerController.perRoundAimSpikeCount.ToString() + "," +
+                playerController.perRoundReloadSpikeCount.ToString() + "," +
+                playerController.perRoundMouseMovementSpikeCount.ToString() + "," +
+                playerController.spikeDurationCumulative.ToString() + "," +
+                avgspikeDurationCumulative.ToString() + "," +
+                playerController.perRoundEnemySpawnSpikeCount.ToString() + "," +
+                playerController.degreeToShootXCumulative.ToString() + "," +
+                playerController.degreeToTargetXCumulative.ToString() + "," +
+                playerController.minAnlgeToEnemyCumulative.ToString() + "," +
+                playerController.enemySizeCumulative.ToString() + "," +
+                playerController.timeToTargetEnemyCumulative.ToString() + "," +
+                playerController.timeToHitEnemyCumulative.ToString() + "," +
+                playerController.timeToKillEnemyCumulative.ToString() + "," +
+                degXShootAvg.ToString() + "," +
+                degXTargetAvg.ToString() + "," +
+                enemySizeOnSpawnAvg.ToString() + "," +
+                playerController.aimDurationPerRound.ToString() + "," +
+                playerController.isFiringDurationPerRound.ToString() + "," +
+                qoeValue.ToString() + "," +
+                acceptabilityValue.ToString();
+            textWriter.WriteLine(roundLogLine);
         }
-
-        float degXTargetAvg = (float)playerController.degreeToTargetXCumulative / (float)playerController.roundKills;
-        float degXShootAvg = (float)playerController.degreeToShootXCumulative / (float)playerController.roundKills;
-        float enemySizeOnSpawnAvg = (float)playerController.enemySizeCumulative / (float)playerController.roundKills;
-
-        float timeToTargetAvg = (float)playerController.timeToTargetEnemyCumulative / (float)playerController.roundKills;
-        float timeToHitAvg = (float)playerController.timeToHitEnemyCumulative / (float)playerController.roundKills;
-        float timeToKillAvg = (float)playerController.timeToKillEnemyCumulative / (float)playerController.roundKills;
-        double avgspikeDurationCumulative = 0;
-        if (playerController.perRoundAimSpikeCount + playerController.perRoundReloadSpikeCount + playerController.perRoundMouseMovementSpikeCount > 0)
-            avgspikeDurationCumulative = (float)playerController.spikeDurationCumulative / (float)(playerController.perRoundAimSpikeCount + playerController.perRoundReloadSpikeCount + playerController.perRoundMouseMovementSpikeCount);
-        double avgFT = frametimeCumulativeRound / roundFrameCount;
-        double avgFPS = 1 / avgFT;
-
-        String roundLogLine =
-           sessionID.ToString() + "," +
-           latinRow.ToString() + "," +
-           currentRoundNumber.ToString() + "," +
-           sessionStartTime.ToString() + "," +
-           System.DateTime.Now.ToString() + "," +
-           roundConfigs.roundFPS[indexArray[currentRoundNumber - 1]].ToString() + "," +
-           roundConfigs.spikeMagnitude[indexArray[currentRoundNumber - 1]].ToString() + "," +
-           roundConfigs.onAimSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-           roundConfigs.onEnemySpawnSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-           roundConfigs.onMouseSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-           roundConfigs.onReloadSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-           roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-           indexArray[currentRoundNumber - 1].ToString() + "," +
-           playerController.score + "," +
-           playerController.shotsFiredPerRound + "," +
-           playerController.shotsHitPerRound + "," +
-           playerController.headshotsHitPerRound + "," +
-           playerController.realoadCountPerRound + "," +
-           playerController.tacticalReloadCountPerRound + "," +
-           accuracy.ToString() + "," +
-           playerController.roundKills + "," +
-           playerController.roundDeaths + "," +
-           playerController.distanceTravelledPerRound + "," +
-           playerController.delXCumilative.ToString() + "," +
-           playerController.delYCumilative.ToString() + "," +
-           (playerController.delXCumilative + playerController.delYCumilative).ToString() + "," +
-           frametimeCumulativeRound.ToString() + "," +
-           roundFrameCount.ToString() + "," +
-           avgFT.ToString() + "," +
-           avgFPS.ToString() + "," +
-           playerController.perRoundAimSpikeCount.ToString() + "," +
-           playerController.perRoundReloadSpikeCount.ToString() + "," +
-           playerController.perRoundMouseMovementSpikeCount.ToString() + "," +
-           playerController.spikeDurationCumulative.ToString() + "," +
-           avgspikeDurationCumulative.ToString() + "," +
-           playerController.perRoundEnemySpawnSpikeCount.ToString() + "," +
-           playerController.degreeToShootXCumulative.ToString() + "," +
-           playerController.degreeToTargetXCumulative.ToString() + "," +
-           playerController.minAnlgeToEnemyCumulative.ToString() + "," +
-           playerController.enemySizeCumulative.ToString() + "," +
-           playerController.timeToTargetEnemyCumulative.ToString() + "," +
-           playerController.timeToHitEnemyCumulative.ToString() + "," +
-           playerController.timeToKillEnemyCumulative.ToString() + "," +
-           degXShootAvg.ToString() + "," +
-           degXTargetAvg.ToString() + "," +
-           enemySizeOnSpawnAvg.ToString() + "," +
-           playerController.aimDurationPerRound.ToString() + "," +
-           playerController.isFiringDurationPerRound.ToString() + "," +
-           qoeValue.ToString() + "," +
-           acceptabilityValue.ToString()
-            ;
-        textWriter.WriteLine(roundLogLine);
-        textWriter.Close();
     }
+
 
     public void LogPlayerData()
     {
         PlayerStats stats = playerController.gameObject.GetComponent<PlayerStats>();
 
-        TextWriter textWriter = null;
-        filenamePerRound = "Data\\Logs\\PlayerData_" + fileNameSuffix + "_" + sessionID + "_" + ".csv";
-        while (textWriter == null)
-            textWriter = System.IO.File.AppendText(filenamePerRound);
+        string filenamePerRound = "Data\\Logs\\PlayerData_" + fileNameSuffix + "_" + sessionID + "_" + ".csv";
+        bool fileExists = System.IO.File.Exists(filenamePerRound);
 
-        for (int i = 0; i < playerController.playerTickLog.mouseX.Count; i++)
+        using (var textWriter = new StreamWriter(filenamePerRound, append: true))
         {
-            String tickLogLine =
-               sessionID.ToString() + "," +
-               latinRow.ToString() + "," +
-               currentRoundNumber.ToString() + "," +
-               roundConfigs.roundFPS[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.spikeMagnitude[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.onAimSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.onEnemySpawnSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.onMouseSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.onReloadSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               indexArray[currentRoundNumber - 1].ToString() + "," +
-               playerController.playerTickLog.roundTimer[i].ToString() + "," +
-               playerController.playerTickLog.time[i].ToString() + "," +
-               playerController.playerTickLog.mouseX[i].ToString() + "," +
-               playerController.playerTickLog.mouseY[i].ToString() + "," +
-               playerController.playerTickLog.playerX[i].ToString() + "," +
-               playerController.playerTickLog.playerY[i].ToString() + "," +
-               playerController.playerTickLog.playerZ[i].ToString() + "," +
-               playerController.playerTickLog.scorePerSec[i].ToString() + "," +
-               playerController.playerTickLog.playerRot[i].ToString() + "," +
-               playerController.playerTickLog.enemyPos[i].ToString() + "," +
-               playerController.playerTickLog.isADS[i].ToString() + "," +
-               playerController.playerTickLog.frameTimeMS[i].ToString();
+            if (!fileExists)
+            {
+                string header =
+                    "sessionID,latinRow,currentRoundNumber,roundFPS,spikeMagnitude," +
+                    "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," +
+                    "indexArray,roundTimer,time,mouseX,mouseY,playerX,playerY,playerZ," +
+                    "scorePerSec,playerRot_w,playerRot_x,playerRot_y,playerRot_z," +
+                    "enemyPos_x,enemyPos_y,enemyPos_z," +
+                    "isADS,frameTimeMS,muzzleX,muzzleY,muzzleZ,playerOnTarget,onTargetDuration,targetAngleToEnemy,validMissContinious";
+                textWriter.WriteLine(header);
+            }
 
-            textWriter.WriteLine(tickLogLine);
+            var log = playerController.playerTickLog;
+            int tickCount = log.mouseX.Count;
+
+            for (int i = 0; i < tickCount; i++)
+            {
+                string tickLogLine =
+                    sessionID.ToString() + "," +
+                    latinRow.ToString() + "," +
+                    currentRoundNumber.ToString() + "," +
+                    roundConfigs.roundFPS[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.spikeMagnitude[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.onAimSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.onEnemySpawnSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.onMouseSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.onReloadSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    indexArray[currentRoundNumber - 1].ToString() + "," +
+                    log.roundTimer[i].ToString() + "," +
+                    log.time[i].ToString() + "," +
+                    log.mouseX[i].ToString() + "," +
+                    log.mouseY[i].ToString() + "," +
+                    log.playerX[i].ToString() + "," +
+                    log.playerY[i].ToString() + "," +
+                    log.playerZ[i].ToString() + "," +
+                    log.scorePerSec[i].ToString() + "," +
+                    log.playerRot[i].w.ToString() + "," +
+                    log.playerRot[i].x.ToString() + "," +
+                    log.playerRot[i].y.ToString() + "," +
+                    log.playerRot[i].z.ToString() + "," +
+                    log.enemyPos[i].x.ToString() + "," +
+                    log.enemyPos[i].y.ToString() + "," +
+                    log.enemyPos[i].z.ToString() + "," +
+                    log.isADS[i].ToString() + "," +
+                    log.frameTimeMS[i].ToString() + "," +
+                    log.muzzleX[i].ToString() + "," +
+                    log.muzzleY[i].ToString() + "," +
+                    log.muzzleZ[i].ToString() + "," +
+                    log.playerOnTarget[i].ToString() + "," +
+                    log.onTargetDuration[i].ToString() + "," +
+                    log.targetAngleToEnemy[i].ToString() + "," +
+                    log.validMissContinious[i].ToString();
+
+                textWriter.WriteLine(tickLogLine);
+            }
         }
-        textWriter.Close();
     }
 
     public void LogPerShotData()
     {
         PlayerStats stats = playerController.gameObject.GetComponent<PlayerStats>();
 
-        TextWriter textWriter = null;
-        filenamePerRound = "Data\\Logs\\ShotData_" + fileNameSuffix + "_" + sessionID + "_" + ".csv";
-        while (textWriter == null)
-            textWriter = System.IO.File.AppendText(filenamePerRound);
+        string filenamePerRound = "Data\\Logs\\ShotData_" + fileNameSuffix + "_" + sessionID + "_" + ".csv";
+        bool fileExists = System.IO.File.Exists(filenamePerRound);
 
-        for (int i = 0; i < playerController.perShotLog.mouseX.Count; i++)
+        using (var textWriter = new StreamWriter(filenamePerRound, append: true))
         {
-            String shotLogLine =
-               sessionID.ToString() + "," +
-               latinRow.ToString() + "," +
-               currentRoundNumber.ToString() + "," +
-               roundConfigs.roundFPS[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.spikeMagnitude[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.onAimSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.onEnemySpawnSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.onMouseSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.onReloadSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
-               indexArray[currentRoundNumber - 1].ToString() + "," +
-               playerController.perShotLog.roundTimer[i].ToString() + "," +
-               playerController.perShotLog.time[i].ToString() + "," +
-               playerController.perShotLog.mouseX[i].ToString() + "," +
-               playerController.perShotLog.mouseY[i].ToString() + "," +
-               playerController.perShotLog.playerX[i].ToString() + "," +
-               playerController.perShotLog.playerY[i].ToString() + "," +
-               playerController.perShotLog.playerZ[i].ToString() + "," +
-               playerController.perShotLog.playerRot[i].ToString() + "," +
-               playerController.perShotLog.enemyPos[i].ToString() + "," +
-               playerController.perShotLog.isHit[i].ToString() + "," +
-               playerController.perShotLog.currentAccuracy[i].ToString() + "," +
-               playerController.perShotLog.currentScore[i].ToString() + "," +
-               playerController.perShotLog.missAngle[i].ToString() + "," +
-               playerController.perShotLog.distanceToPlayer[i].ToString() + "," +
-               playerController.perShotLog.currentLocalRadius[i].ToString() + "," +
-               playerController.perShotLog.currentWorldRadius[i].ToString() + "," +
-               playerController.perShotLog.neededLocalRadius[i].ToString() + "," +
-               playerController.perShotLog.neededWorldRadius[i].ToString() + "," +
-               playerController.perShotLog.extraRadiusWorld[i].ToString() + "," +
-               playerController.perShotLog.currentMouseSpeed[i].ToString() + "," +
-               playerController.perShotLog.avgMouseSpeed[i].ToString() + "," +
-               playerController.perShotLog.isADS[i].ToString() + "," +
-               playerController.perShotLog.enemyInView[i].ToString() + "," +
-               playerController.perShotLog.timeTillLastKill[i].ToString() + "," +
-               playerController.perShotLog.validMiss[i].ToString() + "," +
-               playerController.perShotLog.isFirstShotAfterSpike[i].ToString() + "," +
-               playerController.perShotLog.shotCountAfterSpike[i].ToString() + "," +
-               playerController.perShotLog.postSpikeFirstShotHits[i].ToString() + "," +
-               playerController.perShotLog.postSpikeFirstShotMisses[i].ToString() + "," +
-               playerController.perShotLog.postSpikeFirstShotAccuracy[i].ToString() + "," +
-               playerController.perShotLog.elapsedTimeFromLastSpike[i].ToString();
-            textWriter.WriteLine(shotLogLine);
-        }
-        textWriter.Close();
+            if (!fileExists)
+            {
+                // Write header first, only once
+                string header =
+                "sessionID,latinRow,currentRoundNumber,roundFPS,spikeMagnitude," +
+                "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," +
+                "indexArray,roundTimer,time,mouseX,mouseY,playerX,playerY,playerZ," +
+                "playerRot_w,playerRot_x,playerRot_y,playerRot_z," +
+                "enemyPos_x,enemyPos_y,enemyPos_z," +
+                "isHit,currentAccuracy,currentScore,missAngle,distanceToPlayer," +
+                "currentLocalRadius,currentWorldRadius,neededLocalRadius,neededWorldRadius,extraRadiusWorld," +
+                "currentMouseSpeed,avgMouseSpeed,isADS,enemyInView,timeTillLastKill," +
+                "validMiss,isFirstShotAfterSpike,shotCountAfterSpike,postSpikeFirstShotHits,postSpikeFirstShotMisses," +
+                "postSpikeFirstShotAccuracy,elapsedTimeFromLastSpike, elapsedTimeSinceLastEventIncludingSpike, elapsedTimeSinceLastEventExcludingSpike,horizontalMissAngle,verticalMissAngle,isEnemyInFront";
+                textWriter.WriteLine(header);
+            }
 
+            var log = playerController.perShotLog;
+            int shotCount = log.mouseX.Count;
+
+            for (int i = 0; i < shotCount; i++)
+            {
+                String shotLogLine =
+                   sessionID.ToString() + "," +
+                   latinRow.ToString() + "," +
+                   currentRoundNumber.ToString() + "," +
+                   roundConfigs.roundFPS[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                   roundConfigs.spikeMagnitude[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                   roundConfigs.onAimSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                   roundConfigs.onEnemySpawnSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                   roundConfigs.onMouseSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                   roundConfigs.onReloadSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                   roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                   indexArray[currentRoundNumber - 1].ToString() + "," +
+                   log.roundTimer[i].ToString() + "," +
+                   log.time[i].ToString() + "," +
+                   log.mouseX[i].ToString() + "," +
+                   log.mouseY[i].ToString() + "," +
+                   log.playerX[i].ToString() + "," +
+                   log.playerY[i].ToString() + "," +
+                   log.playerZ[i].ToString() + "," +
+                   log.playerRot[i].w.ToString() + "," +
+                   log.playerRot[i].x.ToString() + "," +
+                   log.playerRot[i].y.ToString() + "," +
+                   log.playerRot[i].z.ToString() + "," +
+                   log.enemyPos[i].x.ToString() + "," +
+                   log.enemyPos[i].y.ToString() + "," +
+                   log.enemyPos[i].z.ToString() + "," +
+                   log.isHit[i].ToString() + "," +
+                   log.currentAccuracy[i].ToString() + "," +
+                   log.currentScore[i].ToString() + "," +
+                   log.missAngle[i].ToString() + "," +
+                   log.distanceToPlayer[i].ToString() + "," +
+                   log.currentLocalRadius[i].ToString() + "," +
+                   log.currentWorldRadius[i].ToString() + "," +
+                   log.neededLocalRadius[i].ToString() + "," +
+                   log.neededWorldRadius[i].ToString() + "," +
+                   log.extraRadiusWorld[i].ToString() + "," +
+                   log.currentMouseSpeed[i].ToString() + "," +
+                   log.avgMouseSpeed[i].ToString() + "," +
+                   log.isADS[i].ToString() + "," +
+                   log.enemyInView[i].ToString() + "," +
+                   log.timeTillLastKill[i].ToString() + "," +
+                   log.validMiss[i].ToString() + "," +
+                   log.isFirstShotAfterSpike[i].ToString() + "," +
+                   log.shotCountAfterSpike[i].ToString() + "," +
+                   log.postSpikeFirstShotHits[i].ToString() + "," +
+                   log.postSpikeFirstShotMisses[i].ToString() + "," +
+                   log.postSpikeFirstShotAccuracy[i].ToString() + "," +
+                   log.elapsedTimeFromLastSpike[i].ToString() + "," +
+                   log.elapsedTimeSinceLastEventIncludingSpike[i].ToString() + "," +
+                   log.elapsedTimeSinceLastEventExcludingSpike[i].ToString() + "," +
+                   log.horizontalMissAngle[i].ToString() + "," +
+                   log.verticalMissAngle[i].ToString() + "," +
+                   log.isEnemyInFront[i].ToString();
+                textWriter.WriteLine(shotLogLine);
+            }
+        }
     }
+
+
+    public void LogPerShootingEventData()
+    {
+        PlayerStats stats = playerController.gameObject.GetComponent<PlayerStats>();
+
+        string filenamePerEvent = "Data\\Logs\\ShootingEventData_" + fileNameSuffix + "_" + sessionID + "_" + ".csv";
+        bool fileExists = System.IO.File.Exists(filenamePerEvent);
+
+        using (var textWriter = new StreamWriter(filenamePerEvent, append: true))
+        {
+            // Write header only if file doesn't exist
+            if (!fileExists)
+            {
+                string header =
+                 "sessionID,latinRow,currentRoundNumber,roundFPS,spikeMagnitude," +
+                 "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," +
+                 "indexArray,time,roundTimer,mouseX,mouseY,playerX,playerY,playerZ," +
+                 "playerRot_w,playerRot_x,playerRot_y,playerRot_z," +
+                 "enemyPos_x,enemyPos_y,enemyPos_z," +
+                 "muzzlePos_x,muzzlePos_y,muzzlePos_z,isEnemyDead," +  
+                 "distanceToPlayer,mouseMovedX,mouseMovedY," +
+                 "shotsFiredPerEvent,shotsHitPerEvent,shotsMissedPerEvent," +
+                 "durationOfEvent,durationOfEventIncludingSpikes,spikeCountPerEvent,angularDistanceFromEnemyOnStart,targetTimeOnEnemy";
+
+                textWriter.WriteLine(header);
+            }
+
+            var log = playerController.shootingEventLog;
+            int eventCount = log.time.Count;
+
+            for (int i = 0; i < eventCount; i++)
+            {
+                string eventLogLine =
+                    sessionID.ToString() + "," +
+                    latinRow.ToString() + "," +
+                    currentRoundNumber.ToString() + "," +
+                    roundConfigs.roundFPS[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.spikeMagnitude[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.onAimSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.onEnemySpawnSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.onMouseSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.onReloadSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    indexArray[currentRoundNumber - 1].ToString() + "," +
+                    log.time[i].ToString() + "," +
+                    log.roundTimer[i].ToString() + "," +
+                    log.mouseX[i].ToString() + "," +
+                    log.mouseY[i].ToString() + "," +
+                    log.playerX[i].ToString() + "," +
+                    log.playerY[i].ToString() + "," +
+                    log.playerZ[i].ToString() + "," +
+                    log.playerRot[i].w.ToString() + "," +
+                    log.playerRot[i].x.ToString() + "," +
+                    log.playerRot[i].y.ToString() + "," +
+                    log.playerRot[i].z.ToString() + "," +
+                    log.enemyPos[i].x.ToString() + "," +
+                    log.enemyPos[i].y.ToString() + "," +
+                    log.enemyPos[i].z.ToString() + "," +
+                    log.muzzlePos[i].x.ToString() + "," +
+                    log.muzzlePos[i].y.ToString() + "," +
+                    log.muzzlePos[i].z.ToString() + "," +
+                    log.isEnemyDead[i].ToString() + "," +
+                    log.distanceToPlayer[i].ToString() + "," +
+                    log.mouseMovedX[i].ToString() + "," +
+                    log.mouseMovedY[i].ToString() + "," +
+                    log.shotsFiredPerEvent[i].ToString() + "," +
+                    log.shotsHitPerEvent[i].ToString() + "," +
+                    log.shotsMissedPerEvent[i].ToString() + "," +
+                    log.durationOfEventNotIncludingSpikes[i].ToString() + "," +
+                    log.durationOfEventIncludingSpikes[i].ToString() + "," +                                                            
+                    log.spikeCountPerEvent[i].ToString() + "," +
+                    log.angularDistanceFromEnemyOnStart[i].ToString() + "," +
+                    log.targetTimeOnEnemy[i].ToString();
+
+                textWriter.WriteLine(eventLogLine);
+            }
+        }
+    }
+
+
 }

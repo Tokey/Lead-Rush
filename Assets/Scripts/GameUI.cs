@@ -27,6 +27,7 @@ public class GameUI : MonoBehaviour
 
     public TMPro.TMP_Text roundText;
 
+
     public GameObject player;
 
     public RoundManager roundManager;
@@ -57,10 +58,12 @@ public class GameUI : MonoBehaviour
 
     public GameObject acceptabilityGO;
 
+    public DynamicCrosshair crosshairScript; // Assign in Inspector
     // Start is called before the first frame update
     void Start()
     {
         beeperFuse = true;
+        crosshairScript = GetComponent<DynamicCrosshair>();
     }
 
     // Update is called once per frame
@@ -73,11 +76,12 @@ public class GameUI : MonoBehaviour
         UpdateHighAlert();
     }
 
-    void UpdateHighAlert() {
+    void UpdateHighAlert()
+    {
 
         GameObject enemy = enemyManager.GetClosestEnemy();
 
-        if(player.GetComponent<FPSController>().deathTimeOut>0)
+        if (player.GetComponent<FPSController>().deathTimeOut > 0)
         {
             highAlertTop.gameObject.SetActive(true);
             highAlertBottom.gameObject.SetActive(true);
@@ -105,7 +109,7 @@ public class GameUI : MonoBehaviour
 
             float distance = Vector3.Distance(player.transform.position, enemy.transform.position);
 
-            SetHighAlertAlpha(distance / 2, 0 , enemy.GetComponent<AudioSource>());
+            SetHighAlertAlpha(distance / 2, 0, enemy.GetComponent<AudioSource>());
 
 
             if (relativePoint.x < 0.0 && relativePoint.z > 0.0) // Front left
@@ -186,17 +190,33 @@ public class GameUI : MonoBehaviour
     }
     void UpdateUITexts()
     {
-        ammoText.text = "" + player.GetComponent<FPSController>().GetGun().currentAmmoCount;
-        healthText.text = "      " + (player.GetComponent<FPSController>().liveAccuracy*100.0f).ToString("##");
-        scoreText.text = "Score: " + player.GetComponent<FPSController>().score;
+        var fps = player.GetComponent<FPSController>();
+        ammoText.text = "" + fps.GetGun().currentAmmoCount;
+        healthText.text = "      " + (fps.liveAccuracy * 100.0f).ToString("##");
+        scoreText.text = "Score: " + fps.score;
         durationText.text = "Duration: " + roundManager.roundTimer.ToString("###");
 
-        killsText.text = "Kills: " + player.GetComponent<FPSController>().roundKills;
-        deathsText.text = "Deaths: " + player.GetComponent<FPSController>().roundDeaths;
+        killsText.text = "Kills: " + fps.roundKills;
+        deathsText.text = "Deaths: " + fps.roundDeaths;
 
-        lagText.text = player.GetComponent<FPSController>().missAnglePublic.ToString() + "  VM: " + player.GetComponent<FPSController>().validMissPublic.ToString();
 
-        
+        lagText.text =
+    "MissAngle: " + fps.missAnglePublic.ToString("F2") +
+    " | H: " + fps.horizontalMissAnglePublic.ToString("F2") +
+    " | V: " + fps.verticalMissAnglePublic.ToString("F2") +
+    " | InFront: " + fps.enemyIsInFrontPublic +
+    " | VM: " + fps.validMissPublic +
+    "\nWorldRadReq: " + fps.worldRadRequiredPublic.ToString("F2") +
+
+    "WorldRadInit: " + fps.worldRadiusPublic.ToString("F2") +
+
+    " | LocalRadReq: " + fps.localRadRequiredPublic.ToString("F2") +
+    " | ExtraRad: " + fps.extraRadRequiredPublic.ToString("F2") +
+    " | TOTEnemy: " + fps.timeOnTargetEachEnemy.ToString("F2") +
+    " | TOTEvent: " + fps.timeOnTargetPerEvent.ToString("F2") +
+    " | SurfDist: " + fps.distanceFromEnemyPublic.ToString("F2");
+
+
 
         if (!player.GetComponent<FPSController>().isPlayerReady)
             readyText.SetActive(true);
@@ -213,15 +233,15 @@ public class GameUI : MonoBehaviour
                     roundText.text = "Round\n " + roundManager.currentRoundNumber + "/" + roundManager.totalRoundNumber + "\nSmoothest Practice Round";
                 else if (roundManager.currentRoundNumber == 2)// && !roundManager.isFTStudy)
                     roundText.text = "Round\n " + roundManager.currentRoundNumber + "/" + roundManager.totalRoundNumber + "\nChoppiest Practice Round";
-               /* else if (roundManager.currentRoundNumber == 1 && roundManager.isFTStudy)
-                    roundText.text = "Round\n " + roundManager.currentRoundNumber + "/" + roundManager.totalRoundNumber + "\n Practice Round";*/
+                /* else if (roundManager.currentRoundNumber == 1 && roundManager.isFTStudy)
+                     roundText.text = "Round\n " + roundManager.currentRoundNumber + "/" + roundManager.totalRoundNumber + "\n Practice Round";*/
                 else
                     roundText.text = "Round\n " + roundManager.currentRoundNumber + "/" + roundManager.totalRoundNumber;
             }
             else
                 roundText.text = "Thank You!";
 
-            sliderText.text = (qoeSlider.value/10.0).ToString("#.#");
+            sliderText.text = (qoeSlider.value / 10.0).ToString("#.#");
             /*if (qoeSlider.value != 3.000f)
                 qoeSubmitGO.SetActive(true);
             else
@@ -246,7 +266,7 @@ public class GameUI : MonoBehaviour
                 sliderHandleGreen = 1; // Remains full from 30 to 50
             }
 
-            SliderHandle.color = new Color(sliderHandleRed, sliderHandleGreen,0,1);
+            SliderHandle.color = new Color(sliderHandleRed, sliderHandleGreen, 0, 1);
         }
         else
         {
@@ -256,25 +276,51 @@ public class GameUI : MonoBehaviour
 
     void UpdateHitMarker()
     {
-        if (player.GetComponent<FPSController>().killCooldown > 0)
+        // Determine which hitmarker color to show as before
+        bool showHit = false;
+
+        var fpsController = player.GetComponent<FPSController>();
+        if (fpsController.killCooldown > 0)
         {
             hitMarkerImage.color = new Color(1, 0, 0, 1);
+            showHit = true;
         }
-        else if (player.GetComponent<FPSController>().headshotCooldown > 0)
+        else if (fpsController.headshotCooldown > 0)
         {
             hitMarkerImage.color = new Color(1, 1, 0, 1);
+            showHit = true;
         }
-        else if (player.GetComponent<FPSController>().regularHitCooldown > 0)
+        else if (fpsController.regularHitCooldown > 0)
         {
             hitMarkerImage.color = new Color(1, 1, 1, 1);
+            showHit = true;
         }
         else
         {
             hitMarkerImage.color = new Color(0, 0, 0, 0);
         }
+
+        // --- NEW: Sync hitmarker UI to crosshair ---
+        if (showHit && crosshairScript != null && hitMarkerImage != null)
+        {
+            // Get the latest screen-space position
+            Vector2 screenPos = crosshairScript.CrosshairScreenPosition;
+
+            // Convert to anchored position (assuming Screen Space - Overlay, anchor center)
+            Vector2 anchoredPos = new Vector2(
+                screenPos.x - Screen.width / 2f,
+                screenPos.y - Screen.height / 2f
+            );
+            hitMarkerImage.rectTransform.anchoredPosition = anchoredPos;
+            hitMarkerImage.enabled = true;
+        }
+        else if (hitMarkerImage != null)
+        {
+            hitMarkerImage.enabled = false;
+        }
     }
 
-    void SetHighAlertAlpha(float distance, float takehitTimer,AudioSource source)
+    void SetHighAlertAlpha(float distance, float takehitTimer, AudioSource source)
     {
         if (distance == 0)
             return;
@@ -302,7 +348,7 @@ public class GameUI : MonoBehaviour
         highAlertRight.color = new Color(red, green, blue, alpha);*/
 
         if (!highAlertBlinkOn)
-        { 
+        {
             highAlertTop.color = new Color(red, 33, blue, 0);
             highAlertBottom.color = new Color(red, 33, blue, 0);
             highAlertLeft.color = new Color(red, 33, blue, 0);
@@ -344,7 +390,7 @@ public class GameUI : MonoBehaviour
 
     public void QOESubmitPressed()
     {
-        roundManager.qoeValue = (float)qoeSlider.value/10.0f;
+        roundManager.qoeValue = (float)qoeSlider.value / 10.0f;
 
         qoeSlider.value = 30.000f;
         qoeSubmitGO.SetActive(false);
@@ -385,6 +431,7 @@ public class GameUI : MonoBehaviour
         roundManager.LogRoundData();
         roundManager.LogPlayerData();
         roundManager.LogPerShotData();
+        roundManager.LogPerShootingEventData();
 
         acceptabilityGO.SetActive(false);
         player.GetComponent<FPSController>().isAcceptabilityDisabled = true;
@@ -419,6 +466,7 @@ public class GameUI : MonoBehaviour
         roundManager.LogRoundData();
         roundManager.LogPlayerData();
         roundManager.LogPerShotData();
+        roundManager.LogPerShootingEventData();
 
         acceptabilityGO.SetActive(false);
         player.GetComponent<FPSController>().isAcceptabilityDisabled = true;

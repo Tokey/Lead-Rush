@@ -283,11 +283,13 @@ namespace Demo.Scripts.Runtime
                 return;
             }
 
-            
-                // Get the current player input
-            float moveX = Input.GetAxisRaw("Horizontal");
-            float moveY = Input.GetAxisRaw("Vertical");
+            //MOVEMENT DISABLED
+            // Get the current player input
+            /*float moveX = Input.GetAxisRaw("Horizontal");
+            float moveY = Input.GetAxisRaw("Vertical");*/
 
+            float moveX = 0;
+            float moveY = 0;
             _inputDirection.x = moveX;
             _inputDirection.y = moveY;
 

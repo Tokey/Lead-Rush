@@ -168,7 +168,7 @@ namespace Demo.Scripts.Runtime
 
         public ParticleSystem bulletHitPE;
 
-        public int realoadCountPerRound = 0;
+        public int reloadCountPerRound = 0;
 
         public bool isQoeDisabled;
         public bool isAcceptabilityDisabled;
@@ -200,6 +200,8 @@ namespace Demo.Scripts.Runtime
         public PlayerTickLog playerTickLog;
 
         public PerShotLog perShotLog;
+
+        public ShootingEventLog shootingEventLog;
 
         public Image clickToPhotonIMG;
 
@@ -273,9 +275,45 @@ namespace Demo.Scripts.Runtime
 
         float postSpikeFirstShotAccuracy;
         float elapsedTimeFromLastSpike;
+        float elapsedTimeSinceLastEventExcludingSpike;
+        float elapsedTimeSinceLastEventIncludingSpike;
 
         public float missAnglePublic;
         public bool validMissPublic;
+
+        public float horizontalMissAnglePublic = 0f;
+        public float verticalMissAnglePublic = 0f;
+        public bool enemyIsInFrontPublic = false;
+
+        public float localRadRequiredPublic;
+        public float worldRadRequiredPublic;
+
+        public float extraRadRequiredPublic;
+        public float distanceFromEnemyPublic;
+
+        public float worldRadiusPublic;
+
+        public float onTargetDuration;
+
+        public float timeOnTargetEachEnemy;
+
+        public float timeOnTargetPerEvent;
+
+        public float mouseMovedXPerEvent;
+        public float mouseMovedYPerEvent;
+
+        public int shotsFiredPerEvent;
+        public int shotsHitPerEvent;
+        public int shotsMissedPerEvent;
+
+        public float durationOfEvent;
+        public float durationOfEventWithSpike;
+        public int spikeCountPerEvent;
+        public float angularDistanceFromEnemyOnStart;
+
+        public bool readyToInduceSpike = true;
+
+
         private void InitLayers()
         {
             InitAnimController();
@@ -287,7 +325,6 @@ namespace Demo.Scripts.Runtime
             swayLayer = GetComponentInChildren<SwayLayer>();
             slotLayer = GetComponentInChildren<SlotLayer>();
             collisionLayer = GetComponentInChildren<WeaponCollision>();
-
         }
 
         private bool HasActiveAction()
@@ -360,6 +397,16 @@ namespace Demo.Scripts.Runtime
 
             playerTickLog.frameTimeMS = new List<double>();
 
+
+            playerTickLog.muzzleX = new List<float>();
+            playerTickLog.muzzleY = new List<float>();
+            playerTickLog.muzzleZ = new List<float>();
+            playerTickLog.targetAngleToEnemy = new List<float>();
+            playerTickLog.validMissContinious = new List<bool>();
+
+            playerTickLog.playerOnTarget = new List<bool>();
+            playerTickLog.onTargetDuration = new List<float>();
+
             playerTickLog.time.Clear();
             playerTickLog.mouseX.Clear();
             playerTickLog.mouseY.Clear();
@@ -372,6 +419,42 @@ namespace Demo.Scripts.Runtime
             shotCountAfterSpike = 0;
             postSpikeFirstShotHits = 0;
             postSpikeFirstShotMisses = 0;
+
+
+            //Shooting event log
+
+            shootingEventLog = new ShootingEventLog();
+
+            shootingEventLog.time = new List<string>();
+            shootingEventLog.roundTimer = new List<float>();
+
+            shootingEventLog.mouseX = new List<float>();
+            shootingEventLog.mouseY = new List<float>();
+
+            shootingEventLog.playerX = new List<float>();
+            shootingEventLog.playerY = new List<float>();
+            shootingEventLog.playerZ = new List<float>();
+
+            shootingEventLog.playerRot = new List<Quaternion>();
+            shootingEventLog.enemyPos = new List<Vector3>();
+            shootingEventLog.muzzlePos = new List<Vector3>();
+            shootingEventLog.distanceToPlayer = new List<float>();
+
+            shootingEventLog.isEnemyDead = new List<bool>();
+
+            shootingEventLog.mouseMovedX = new List<float>();
+            shootingEventLog.mouseMovedY = new List<float>();
+
+            shootingEventLog.shotsFiredPerEvent = new List<int>();
+            shootingEventLog.shotsHitPerEvent = new List<int>();
+            shootingEventLog.shotsMissedPerEvent = new List<int>();
+
+            shootingEventLog.durationOfEventNotIncludingSpikes = new List<float>();
+            shootingEventLog.durationOfEventIncludingSpikes = new List<float>();
+            shootingEventLog.spikeCountPerEvent = new List<int>();
+            shootingEventLog.angularDistanceFromEnemyOnStart = new List<float>();
+            shootingEventLog.targetTimeOnEnemy = new List<float>();
+            readyToInduceSpike = true;
         }
 
         private void UnequipWeapon()
@@ -519,8 +602,9 @@ namespace Demo.Scripts.Runtime
 
             Transform muzzleT = GetGun().shootPoint.transform;
 
-            // ====== MISS ANGLE CALCULATION (runs EVERY shot) ======
+            // ====== MISS ANGLE & HORIZ/VERT ANGLE CALCULATION (every shot) ======
             float missAngle = -999f;
+            float missAngleFromCenter = -999f;
             float surfaceDistance = 0f;
             float worldRadiusRequired = 0f;
             float extraRadiusWorld = 0f;
@@ -530,37 +614,54 @@ namespace Demo.Scripts.Runtime
             bool enemyInView = false;
             bool validMiss = false;
             float angularRadiusDeg = 0f;
+            float horizontalMissAngle = 0f;
+            float verticalMissAngle = 0f;
+            bool enemyIsInFront = false;
             bool isHit = false;
 
             if (enemyHeadAtShot != null && sc != null && scT != null)
             {
-                CalculateMissAngleAndRelated(
-                    muzzleT, scT, sc,
-                    out missAngle,
+                // Calculate all miss and angle values
+                // --- Function Call ---
+                CalculateMissAndAngles(
+                    muzzleT,
+                    scT,
+                    sc,
+                    playerCamera,
+                    timeTillLastKill,
+                    out missAngle,              // <-- NEW: surface-based miss
+                    out missAngleFromCenter,    // <-- OLD: center-to-center
+                    out horizontalMissAngle,
+                    out verticalMissAngle,
+                    out angularRadiusDeg,
+                    out enemyInView,
+                    out enemyIsInFront,
+                    out validMiss,
                     out surfaceDistance,
                     out worldRadiusRequired,
                     out extraRadiusWorld,
                     out localRadiusRequired,
-                    out worldRadius,
-                    out angularRadiusDeg,
-                    out enemyInView
+                    out worldRadius
                 );
 
-                validMiss = (enemyInView && timeTillLastKill >= 0.3f);
 
+                // Optionally update accuracy
                 if (shotsFiredPerRound > 0)
                     currentAccuracy = (float)shotsHitPerRound / (float)shotsFiredPerRound;
                 else
                     currentAccuracy = 0f;
+
+                // Not a valid miss if enemy is behind!
+                if (!enemyIsInFront) validMiss = false;
             }
             else
             {
-                // Guarantee these for "no enemy present" cases
                 missAngle = -999f;
                 enemyInView = false;
                 validMiss = false;
             }
 
+            missAnglePublic = missAngle;
             validMissPublic = validMiss;
 
             // ====== Raycast for hit/miss check ======
@@ -575,12 +676,28 @@ namespace Demo.Scripts.Runtime
                     // HEADSHOT
                     isHit = true;
                     if (!targetShot) targetShot = true;
-                    hit.collider.GetComponentInParent<Enemy>().TakeDamage(GetGun().bulletDamage * 5);
+
+                    bool isTPing = hit.collider.GetComponentInParent<Enemy>().isTeleporting;
+                    bool isInvincible = hit.collider.GetComponentInParent<Enemy>().invincibilityEffect.activeSelf;
+                    if (!isTPing && !isInvincible)
+                    {
+                        
+                        shotsHitPerEvent++;
+                        shotsFiredPerEvent++;
+
+                        hit.collider.GetComponentInParent<Enemy>().TakeDamage(GetGun().bulletDamage * 5);
+                        
+                        PlayHeadshotSFX();
+                        shotsHitPerRound++;
+                        headshotsHitPerRound++;
+                        score += onHitScore;
+                    }
+                    else
+                    {
+                        isHit = false;
+                    }
+
                     headshotCooldown = .2f;
-                    PlayHeadshotSFX();
-                    shotsHitPerRound++;
-                    headshotsHitPerRound++;
-                    score += onHitScore;
 
                     if (shotCountAfterSpike <= 0)
                     {
@@ -599,10 +716,14 @@ namespace Demo.Scripts.Runtime
                     else
                         postSpikeFirstShotAccuracy = (float)postSpikeFirstShotHits / ((float)postSpikeFirstShotHits + (float)postSpikeFirstShotMisses);
 
-                    UpdateShotLog(surfaceDistance, missAngle, true, worldRadiusRequired, extraRadiusWorld, localRadiusRequired,
+                    UpdateShotLog(
+                        surfaceDistance, missAngle, isHit, worldRadiusRequired, extraRadiusWorld, localRadiusRequired,
                         worldRadius, sc != null ? sc.radius : 0, currentAccuracy, score, roundManager.attributeScalingModule.currentSpeed,
                         roundManager.attributeScalingModule.avgMouseSpeed, enemyInView, timeTillLastKill, validMiss,
-                        isFirstShotAfterSpike, shotCountAfterSpike, postSpikeFirstShotHits, postSpikeFirstShotMisses, postSpikeFirstShotAccuracy, elapsedTimeFromLastSpike);
+                        isFirstShotAfterSpike, shotCountAfterSpike, postSpikeFirstShotHits, postSpikeFirstShotMisses, postSpikeFirstShotAccuracy, elapsedTimeFromLastSpike
+                    );
+
+
                 }
                 else
                 {
@@ -626,15 +747,20 @@ namespace Demo.Scripts.Runtime
                     else
                         postSpikeFirstShotAccuracy = (float)postSpikeFirstShotHits / ((float)postSpikeFirstShotHits + (float)postSpikeFirstShotMisses);
 
-                    UpdateShotLog(surfaceDistance, missAngle, false, worldRadiusRequired, extraRadiusWorld, localRadiusRequired,
+                    UpdateShotLog(
+                        surfaceDistance, missAngle, false, worldRadiusRequired, extraRadiusWorld, localRadiusRequired,
                         worldRadius, sc != null ? sc.radius : 0, currentAccuracy, score, roundManager.attributeScalingModule.currentSpeed,
                         roundManager.attributeScalingModule.avgMouseSpeed, enemyInView, timeTillLastKill, validMiss,
-                        isFirstShotAfterSpike, shotCountAfterSpike, postSpikeFirstShotHits, postSpikeFirstShotMisses, postSpikeFirstShotAccuracy, elapsedTimeFromLastSpike);
+                        isFirstShotAfterSpike, shotCountAfterSpike, postSpikeFirstShotHits, postSpikeFirstShotMisses, postSpikeFirstShotAccuracy, elapsedTimeFromLastSpike
+                    );
+
+                    shotsMissedPerEvent++;
+                    shotsFiredPerEvent++;
                 }
             }
             else
             {
-                // COMPLETELY MISSED (ray hit nothing, still log miss angle if head exists)
+                // COMPLETELY MISSED (ray hit nothing)
                 isHit = false;
                 score += onMissScore;
                 if (shotCountAfterSpike <= 0)
@@ -654,22 +780,22 @@ namespace Demo.Scripts.Runtime
                 else
                     postSpikeFirstShotAccuracy = (float)postSpikeFirstShotHits / ((float)postSpikeFirstShotHits + (float)postSpikeFirstShotMisses);
 
-                UpdateShotLog(surfaceDistance, missAngle, false, worldRadiusRequired, extraRadiusWorld, localRadiusRequired,
+                UpdateShotLog(
+                    surfaceDistance, missAngle, false, worldRadiusRequired, extraRadiusWorld, localRadiusRequired,
                     worldRadius, sc != null ? sc.radius : 0, currentAccuracy, score, roundManager.attributeScalingModule.currentSpeed,
                     roundManager.attributeScalingModule.avgMouseSpeed, enemyInView, timeTillLastKill, validMiss,
-                    isFirstShotAfterSpike, shotCountAfterSpike, postSpikeFirstShotHits, postSpikeFirstShotMisses, postSpikeFirstShotAccuracy, elapsedTimeFromLastSpike);
+                    isFirstShotAfterSpike, shotCountAfterSpike, postSpikeFirstShotHits, postSpikeFirstShotMisses, postSpikeFirstShotAccuracy, elapsedTimeFromLastSpike
+                );
             }
 
             GetGun().OnFire();
             PlayAnimation(GetGun().fireClip);
-
             PlayCameraShake(GetGun().cameraShake);
 
             if (GetGun().recoilPattern != null)
             {
                 float aimRatio = IsAiming() ? GetGun().recoilPattern.aimRatio : 1f;
-                float hRecoil = Random.Range(GetGun().recoilPattern.horizontalVariation.x,
-                    GetGun().recoilPattern.horizontalVariation.y);
+                float hRecoil = Random.Range(GetGun().recoilPattern.horizontalVariation.x, GetGun().recoilPattern.horizontalVariation.y);
                 _controllerRecoil += new Vector2(hRecoil, _recoilStep) * aimRatio;
             }
 
@@ -687,7 +813,6 @@ namespace Demo.Scripts.Runtime
                     OnFireReleased();
                     return;
                 }
-
                 _bursts--;
             }
 
@@ -699,6 +824,7 @@ namespace Demo.Scripts.Runtime
 
             _recoilStep += GetGun().recoilPattern.acceleration;
         }
+
 
 
         private void CalculateMissAngleAndRelated(
@@ -722,44 +848,71 @@ namespace Demo.Scripts.Runtime
         }
 
         // Helper method for miss angle calculation
-        private void CalculateMissAngleAndRelated(
-            Transform muzzleT,
-            Transform enemyHeadT,
-            SphereCollider sc,
-            out float missAngle,
-            out float surfaceDistance,
-            out float worldRadiusRequired,
-            out float extraRadiusWorld,
-            out float localRadiusRequired,
-            out float worldRadius,
-            out float angularRadiusDeg,
-            out bool enemyInView
-        )
+        void CalculateMissAndAngles(
+        Transform muzzleT,
+        Transform scT,
+        SphereCollider sc,
+        Camera playerCamera,
+        float timeTillLastKill,
+        out float missAngle,
+        out float missAngleFromCenter,
+        out float horizontalMissAngle,
+        out float verticalMissAngle,
+        out float angularRadiusDeg,
+        out bool enemyInView,
+        out bool enemyIsInFront,
+        out bool validMiss,
+        out float surfaceDistance,
+        out float worldRadiusRequired,
+        out float extraRadiusWorld,
+        out float localRadiusRequired,
+        out float worldRadius
+    )
         {
-            Vector3 worldCenter = enemyHeadT.TransformPoint(sc.center);
-            worldRadius = sc.radius * enemyHeadT.lossyScale.x;
-            Vector3 origin = muzzleT.position;
-            Vector3 toCenter = worldCenter - origin;
-            float distToCenter = toCenter.magnitude;
-            Vector3 dirToCenter = toCenter / distToCenter;
-            surfaceDistance = Mathf.Max(0f, distToCenter - worldRadius);
+            Vector3 muzzlePos = muzzleT.position;
+            Vector3 muzzleForward = muzzleT.forward;
+            Vector3 headCenterWorld = scT.TransformPoint(sc.center);
+            Vector3 toHead = headCenterWorld - muzzlePos;
+            float distance = toHead.magnitude;
+            Vector3 dirToHead = toHead / distance;
 
-            // 3D miss angle
-            float centerAngle = Vector3.Angle(muzzleT.forward, dirToCenter);
-            angularRadiusDeg = Mathf.Asin(worldRadius / distToCenter) * Mathf.Rad2Deg;
-            missAngle = Mathf.Max(0f, centerAngle - angularRadiusDeg);
 
-            float centerAngleRad = centerAngle * Mathf.Deg2Rad;
-            worldRadiusRequired = distToCenter * Mathf.Sin(centerAngleRad);
-            extraRadiusWorld = Mathf.Max(0f, worldRadiusRequired - worldRadius);
+            missAngleFromCenter = Vector3.Angle(muzzleForward, dirToHead);
 
-            // convert back to local‐space collider radius
-            localRadiusRequired = worldRadiusRequired / enemyHeadT.lossyScale.x;
+            float scale = Mathf.Max(scT.lossyScale.x, scT.lossyScale.y, scT.lossyScale.z);
+            worldRadius = sc.radius * scale;
 
-            Vector3 vp = playerCamera.WorldToViewportPoint(enemyHeadT.position);
-            // z>0 means in front of camera, x/y between 0–1 means inside the view rectangle
-            enemyInView = vp.z > 0f && vp.x >= 0f && vp.x <= 1f && vp.y >= 0f && vp.y <= 1f;
+
+            angularRadiusDeg = Mathf.Rad2Deg * Mathf.Asin(worldRadius / distance);
+
+
+            missAngle = Mathf.Max(0f, missAngleFromCenter - angularRadiusDeg);
+
+            horizontalMissAngle = Vector3.SignedAngle(muzzleForward, dirToHead, Vector3.up);
+            verticalMissAngle = Vector3.SignedAngle(muzzleForward, dirToHead, muzzleT.right);
+
+            surfaceDistance = Mathf.Max(0, distance - worldRadius);
+
+            // ---
+            worldRadiusRequired = distance * Mathf.Tan(missAngleFromCenter * Mathf.Deg2Rad);
+            localRadiusRequired = worldRadiusRequired / scale;
+            extraRadiusWorld = Mathf.Max(0, worldRadiusRequired - worldRadius);
+
+            // --- Viewport and front 
+            Vector3 vp = playerCamera.WorldToViewportPoint(headCenterWorld);
+            enemyInView = (vp.z > 0f && vp.x >= 0f && vp.x <= 1f && vp.y >= 0f && vp.y <= 1f);
+
+            float dot = Vector3.Dot(muzzleForward.normalized, dirToHead);
+            enemyIsInFront = dot > 0.1f;
+
+            // --- Valid miss
+            validMiss = enemyInView && enemyIsInFront && timeTillLastKill >= 0.3f;
         }
+
+
+
+
+
 
 
         private void OnFirePressed()
@@ -912,7 +1065,7 @@ namespace Demo.Scripts.Runtime
                 return;
 
             GetGun().currentAmmoCount = GetGun().magSize;
-            realoadCountPerRound++;
+            reloadCountPerRound++;
             if (!isAuto)
                 tacticalReloadCountPerRound++;
             if (isReloadSpikeEnabled)
@@ -992,13 +1145,13 @@ namespace Demo.Scripts.Runtime
 
             if (Input.GetKeyDown(KeyCode.R))
             {
-                TryReload(false);
+                //TryReload(false); // RELOEAD DISABLED
 
             }
 
             if (Input.GetKeyDown(KeyCode.G))
             {
-                TryGrenadeThrow();
+                //TryGrenadeThrow();
             }
 
             HandleWeaponChangeInput();
@@ -1042,11 +1195,11 @@ namespace Demo.Scripts.Runtime
 
                 if (Input.GetKeyDown(KeyCode.Mouse1))
                 {
-                    StartAiming();
+                    //StartAiming(); //ADS OFF
                 }
                 if (Input.GetKeyUp(KeyCode.Mouse1))
                 {
-                    StopAiming();
+                    //StopAiming();
                 }
 
                 if (Input.GetKeyDown(KeyCode.V))
@@ -1169,6 +1322,9 @@ namespace Demo.Scripts.Runtime
 
                 delXCumilative += Mathf.Abs(deltaMouseX);
                 delYCumilative += Mathf.Abs(deltaMouseY);
+
+                mouseMovedXPerEvent = Mathf.Abs(deltaMouseX);
+                mouseMovedYPerEvent = Mathf.Abs(deltaMouseY);
 
                 if (!targetMarked)
                 {
@@ -1391,6 +1547,15 @@ namespace Demo.Scripts.Runtime
 
             playerTickLog.frameTimeMS.Add(deltaTime);
 
+            playerTickLog.muzzleX.Add(muzzlePointTransformGO.transform.position.x);
+            playerTickLog.muzzleY.Add(muzzlePointTransformGO.transform.position.y);
+            playerTickLog.muzzleZ.Add(muzzlePointTransformGO.transform.position.z);
+
+            playerTickLog.targetAngleToEnemy.Add(missAnglePublic);
+            playerTickLog.validMissContinious.Add(validMissPublic);
+
+            playerTickLog.playerOnTarget.Add(playerOnTarget);
+            playerTickLog.onTargetDuration.Add(onTargetDuration);
             //Debug.Log("TICK: " + Time.deltaTime * 1000.0);
 
             //Debug.Log("Aim: " + degreeToTargetX + "  " +targetMarked);
@@ -1449,7 +1614,14 @@ namespace Demo.Scripts.Runtime
             perShotLog.postSpikeFirstShotMisses.Add(postSpikeFirstShotMisses);
             perShotLog.postSpikeFirstShotAccuracy.Add(postSpikeFirstShotAccuracy);
             perShotLog.elapsedTimeFromLastSpike.Add(elapsedTimeFromLastSpike);
-            
+
+            perShotLog.horizontalMissAngle.Add(horizontalMissAnglePublic);
+            perShotLog.verticalMissAngle.Add(verticalMissAnglePublic);
+            perShotLog.isEnemyInFront.Add(enemyIsInFrontPublic);
+
+            perShotLog.elapsedTimeSinceLastEventExcludingSpike.Add(elapsedTimeSinceLastEventExcludingSpike);
+            perShotLog.elapsedTimeSinceLastEventIncludingSpike.Add(elapsedTimeSinceLastEventIncludingSpike);
+
             //Debug.Log("TICK: " + Time.deltaTime * 1000.0);
 
             //Debug.Log("Aim: " + degreeToTargetX + "  " +targetMarked);
@@ -1483,8 +1655,19 @@ namespace Demo.Scripts.Runtime
             else
                 liveAccuracy = 0;
 
-            timeTillLastKill += Time.deltaTime;
-            elapsedTimeFromLastSpike += Time.deltaTime;
+            if (Time.deltaTime < 0.05)
+            {
+                timeTillLastKill += Time.deltaTime;
+                elapsedTimeFromLastSpike += Time.deltaTime;
+                elapsedTimeSinceLastEventExcludingSpike += Time.deltaTime;
+            }
+            else
+            {
+                timeTillLastKill += 0.002f;
+                elapsedTimeFromLastSpike += 0.002f;
+                elapsedTimeSinceLastEventExcludingSpike += 0.002f;
+            }
+            elapsedTimeSinceLastEventIncludingSpike += Time.deltaTime;
         }
 
         public void UpdateCameraRotation()
@@ -1501,58 +1684,110 @@ namespace Demo.Scripts.Runtime
 
             mainCamera.rotation = cameraHolder.rotation * Quaternion.Euler(_freeLookInput.y, _freeLookInput.x, 0f);
         }
-
         public void UpdateReticle()
         {
             Transform muzzlePointTransform = GetGun().shootPoint.transform;
             Vector3 targetPoint = muzzlePointTransform.position + muzzlePointTransform.TransformDirection(Vector3.forward);
             Vector3 directionWithoutSpread = targetPoint - muzzlePointTransform.position;
 
-            // Attribute Scaling
+            // --- Attribute Scaling & Per-frame miss angle + valid miss calculation ---
             if (currentEnemyHead != null)
             {
                 roundManager.attributeScalingModule.enemyCollider = currentEnemyHead.GetComponent<SphereCollider>();
 
-                // --- Miss Angle Calculation per Frame ---
                 SphereCollider sc = currentEnemyHead.GetComponent<SphereCollider>();
                 Transform scT = sc.transform;
-                float missAngle, angularRadiusDeg;
-                CalculateMissAngleAndRelated(
-                    muzzlePointTransform, scT, sc,
-                    out missAngle, out angularRadiusDeg
-                );
+
+                float missAngle, horizontalMissAngle, verticalMissAngle, angularRadiusDeg, missAngleFromCenter;
+                bool enemyInView, enemyIsInFront, validMiss;
+                float surfaceDistance, worldRadiusRequired, extraRadiusWorld, localRadiusRequired, worldRadius;
+
+                CalculateMissAndAngles(
+                muzzlePointTransform,
+                scT,
+                sc,
+                playerCamera,
+                timeTillLastKill,
+                out missAngle,              // Surface-based miss angle (new)
+                out missAngleFromCenter,    // Center-to-center miss angle (old, required by new function)
+                out horizontalMissAngle,
+                out verticalMissAngle,
+                out angularRadiusDeg,
+                out enemyInView,
+                out enemyIsInFront,
+                out validMiss,
+                out surfaceDistance,
+                out worldRadiusRequired,
+                out extraRadiusWorld,
+                out localRadiusRequired,
+                out worldRadius
+            );
+
                 missAnglePublic = missAngle;
+                horizontalMissAnglePublic = horizontalMissAngle;
+                verticalMissAnglePublic = verticalMissAngle;
+                enemyIsInFrontPublic = enemyIsInFront;
+                validMissPublic = validMiss;
+
+                worldRadRequiredPublic = worldRadiusRequired;
+                localRadRequiredPublic = localRadiusRequired;
+                extraRadRequiredPublic = extraRadiusWorld;
+                distanceFromEnemyPublic = surfaceDistance;
+
+                worldRadiusPublic = worldRadius;
             }
             else
             {
                 missAnglePublic = -999f;
+                horizontalMissAnglePublic = 0f;
+                verticalMissAnglePublic = 0f;
+                enemyIsInFrontPublic = false;
+                validMissPublic = false;
             }
 
-            // Does the ray intersect any objects excluding the player layer
+            // --- Raycast to set reticle visuals ---
             if (Physics.Raycast(muzzlePointTransform.position, directionWithoutSpread, out hit, Mathf.Infinity, ~enemyLargeColliderLayer))
             {
-                reticleObject.gameObject.SetActive(true);
-                reticleObject.transform.position = hit.point;
-
-                float distanceToReticle = Vector3.Distance(muzzlePointTransform.position, hit.point);
-                reticleObject.transform.localScale = new Vector3(reticleSizeMultiplier, reticleSizeMultiplier, reticleSizeMultiplier) * (0.007f + distanceToReticle / 200);
+                if (reticleObject != null)
+                {
+                    // Only set reticle active, don't update its position or scale
+                    reticleObject.gameObject.SetActive(true);
+                }
             }
             else
             {
-                reticleObject.gameObject.SetActive(false);
+                if (reticleObject != null)
+                    reticleObject.gameObject.SetActive(false);
                 enemyAimedFuse = false;
             }
+
+            // --- Aim spike trigger (unchanged) ---
             RaycastHit largeColliderHit;
             if (isAimSpikeEnabled && Physics.Raycast(muzzlePointTransform.position, directionWithoutSpread, out largeColliderHit, Mathf.Infinity, enemyLargeColliderLayer))
             {
-                if (enemyAimedFuse == false && aimSpikeCooldown <= 0)
+                ///PREVIOUS COOLDOWN STUFF
+                /*if (!enemyAimedFuse && aimSpikeCooldown <= 0)
                 {
                     gameManager.isEventBasedDelay = true;
                     perRoundAimSpikeCount++;
                     aimSpikeCooldown = aimSpikeDelay;
                     shotCountAfterSpike = 0;
                     elapsedTimeFromLastSpike = 0;
+                    spikeCountPerEvent++;
+                }*/
+
+
+                if (!enemyAimedFuse && readyToInduceSpike)
+                {
+                    gameManager.isEventBasedDelay = true;
+                    perRoundAimSpikeCount++;
+                    //aimSpikeCooldown = aimSpikeDelay;
+                    readyToInduceSpike = false;
+                    shotCountAfterSpike = 0;
+                    elapsedTimeFromLastSpike = 0;
+                    spikeCountPerEvent++;
                 }
+
                 enemyAimedFuse = true;
             }
             else
@@ -1560,16 +1795,41 @@ namespace Demo.Scripts.Runtime
                 enemyAimedFuse = false;
             }
 
+            
             if (hit.collider != null && hit.collider.gameObject.name == "Head")
             {
                 targetMarked = true;
                 playerOnTarget = true;
+                if (Time.deltaTime <= 0.05)
+                {
+                    onTargetDuration += Time.deltaTime;
+                    timeOnTargetEachEnemy += Time.deltaTime;
+                    timeOnTargetPerEvent += Time.deltaTime;
+                }
+                else
+                {
+                    onTargetDuration += 0.002f;
+                    timeOnTargetEachEnemy += 0.002f;
+                    timeOnTargetPerEvent += 0.002f;
+                }
             }
             else
             {
                 playerOnTarget = false;
             }
+            if (Time.deltaTime <= 0.05)
+            {
+                durationOfEvent += Time.deltaTime;
+            }
+            else
+            {
+                durationOfEvent += 0.002f;
+            }
+
+            durationOfEventWithSpike += Time.deltaTime;
+
         }
+
 
 
         void PlayWeaponChangeSFX()
@@ -1670,7 +1930,7 @@ namespace Demo.Scripts.Runtime
             headshotsHitPerRound = 0;
             delXCumilative = 0;
             delYCumilative = 0;
-            realoadCountPerRound = 0;
+            reloadCountPerRound = 0;
             tacticalReloadCountPerRound = 0;
             spikeDurationCumulative = 0;
             perRoundMouseMovementSpikeCount = 0;
@@ -1723,6 +1983,15 @@ namespace Demo.Scripts.Runtime
 
             playerTickLog.frameTimeMS.Clear();
 
+            playerTickLog.muzzleX.Clear();
+            playerTickLog.muzzleY.Clear();
+            playerTickLog.muzzleZ.Clear();
+            playerTickLog.validMissContinious.Clear();
+            playerTickLog.targetAngleToEnemy.Clear();
+
+            playerTickLog.onTargetDuration.Clear();
+            playerTickLog.playerOnTarget.Clear();
+
 
             perShotLog.time.Clear();
             perShotLog.mouseX.Clear();
@@ -1765,6 +2034,43 @@ namespace Demo.Scripts.Runtime
             perShotLog.postSpikeFirstShotMisses.Clear();
             perShotLog.postSpikeFirstShotAccuracy.Clear();
             perShotLog.elapsedTimeFromLastSpike.Clear();
+
+            perShotLog.horizontalMissAngle.Clear();
+            perShotLog.verticalMissAngle.Clear();
+            perShotLog.isEnemyInFront.Clear();
+
+
+            // Shooting event log clear
+
+            shootingEventLog.time.Clear();
+            shootingEventLog.roundTimer.Clear();
+            shootingEventLog.mouseX.Clear();
+            shootingEventLog.mouseY.Clear();
+
+            shootingEventLog.playerX.Clear();
+            shootingEventLog.playerY.Clear();
+            shootingEventLog.playerZ.Clear();
+
+            shootingEventLog.playerRot.Clear();
+
+            shootingEventLog.enemyPos.Clear();
+            shootingEventLog.muzzlePos.Clear();
+
+            shootingEventLog.distanceToPlayer.Clear();
+            shootingEventLog.isEnemyDead.Clear();
+            shootingEventLog.targetTimeOnEnemy.Clear();
+
+            shootingEventLog.mouseMovedX.Clear();
+            shootingEventLog.mouseMovedY.Clear();
+            shootingEventLog.shotsFiredPerEvent.Clear();
+            shootingEventLog.shotsHitPerEvent.Clear();
+            shootingEventLog.shotsMissedPerEvent.Clear();
+
+            shootingEventLog.durationOfEventNotIncludingSpikes.Clear();
+            shootingEventLog.durationOfEventIncludingSpikes.Clear();
+            shootingEventLog.spikeCountPerEvent.Clear();
+            shootingEventLog.angularDistanceFromEnemyOnStart.Clear();
+
         }
 
         // This function calculates the angular size (in degrees) of a sphere as seen from a reference point.
@@ -1776,17 +2082,79 @@ namespace Demo.Scripts.Runtime
             // Calculate the sphere's diameter using its scale (assuming it's a uniform scale sphere)
             float sphereDiameter = sphere.transform.localScale.x; // Assuming the sphere is uniformly scaled
 
-            // Calculate the horizontal distance from the reference point to the sphere's center
             Vector3 horizontalVector = new Vector3(spherePosition.x - referencePoint.x, 0, spherePosition.z - referencePoint.z);
             float horizontalDistanceToSphere = horizontalVector.magnitude;
 
-            // Calculate the angular size in radians using horizontal distance
             float angularSizeInRadians = 2 * Mathf.Atan(sphereDiameter / (2 * horizontalDistanceToSphere));
 
-            // Convert the angular size to degrees
             float angularSizeInDegrees = angularSizeInRadians * Mathf.Rad2Deg;
 
             return angularSizeInDegrees;
         }
+
+        public void UpdatePerShootingEventLog(bool isEnemyDead)
+        {
+            GameObject enemy = GameObject.FindGameObjectWithTag("Enemy");
+
+            // Time and round info
+            shootingEventLog.time.Add(System.DateTime.Now.ToString());
+            shootingEventLog.roundTimer.Add(roundManager.roundDuration - roundManager.roundTimer);
+            shootingEventLog.mouseX.Add(deltaMouseX);
+            shootingEventLog.mouseY.Add(deltaMouseY);
+
+            // Player position and rotation
+            shootingEventLog.playerX.Add(transform.position.x);
+            shootingEventLog.playerY.Add(transform.position.y);
+            shootingEventLog.playerZ.Add(transform.position.z);
+            shootingEventLog.playerRot.Add(this.transform.rotation);
+
+            // Enemy position
+            if (enemy != null)
+                shootingEventLog.enemyPos.Add(enemy.transform.position);
+            else
+                shootingEventLog.enemyPos.Add(new Vector3(0, 0, 0));
+
+            // Muzzle position
+            shootingEventLog.muzzlePos.Add(muzzlePointTransformGO.transform.position);
+
+            // Distance to enemy
+            if (enemy != null)
+                shootingEventLog.distanceToPlayer.Add(Vector3.Distance(transform.position, enemy.transform.position));
+            else
+                shootingEventLog.distanceToPlayer.Add(0);
+
+            // Mouse moved during event
+            shootingEventLog.mouseMovedX.Add(mouseMovedXPerEvent);
+            shootingEventLog.mouseMovedY.Add(mouseMovedYPerEvent);
+
+            // Shot and spike data
+            shootingEventLog.shotsFiredPerEvent.Add(shotsFiredPerEvent);
+            shootingEventLog.shotsHitPerEvent.Add(shotsHitPerEvent);
+            shootingEventLog.shotsMissedPerEvent.Add(shotsMissedPerEvent);
+            shootingEventLog.durationOfEventNotIncludingSpikes.Add(durationOfEvent);
+            shootingEventLog.durationOfEventIncludingSpikes.Add(durationOfEventWithSpike);
+            shootingEventLog.spikeCountPerEvent.Add(spikeCountPerEvent);
+            shootingEventLog.angularDistanceFromEnemyOnStart.Add(angularDistanceFromEnemyOnStart);
+
+            // Time on target and dead status
+            shootingEventLog.targetTimeOnEnemy.Add(timeOnTargetPerEvent);
+            shootingEventLog.isEnemyDead.Add(isEnemyDead);
+
+            // Reset per-event variables
+            timeOnTargetPerEvent = 0;
+            mouseMovedXPerEvent = 0;
+            mouseMovedYPerEvent = 0;
+            shotsFiredPerEvent = 0;
+            shotsHitPerEvent = 0;
+            shotsMissedPerEvent = 0;
+            durationOfEvent = 0;
+            durationOfEventWithSpike = 0;
+            //angularDistanceFromEnemyOnStart = 0;
+            spikeCountPerEvent = 0;
+            elapsedTimeSinceLastEventExcludingSpike = 0;
+            elapsedTimeSinceLastEventIncludingSpike = 0;
+        }
+
+
     }
 }

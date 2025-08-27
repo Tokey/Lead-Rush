@@ -1,5 +1,4 @@
 using Demo.Scripts.Runtime;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -22,8 +21,14 @@ public class EnemyManager : MonoBehaviour
     public float walkwableAreaRadius;
     float spawnAngle;
 
+    public float invincibilityTimer;
+    public float remainingTeleportTimeFromLastEnemy = 0f;
 
+    public enum SpawnMode { DonutSpawn, VisibleSpawn }
+    public SpawnMode spawnMode = SpawnMode.DonutSpawn;
 
+    [Range(10f, 180f)]
+    public float visibleSpawnAngle = 60f;
 
     void Start()
     {
@@ -37,18 +42,24 @@ public class EnemyManager : MonoBehaviour
         spawnTimer = spawnDuration;
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (!playerController.isPlayerReady || !playerController.isQoeDisabled || !playerController.isAcceptabilityDisabled)
             return;
+
+        if (remainingTeleportTimeFromLastEnemy > 0f)
+        {
+            spawnTimer = remainingTeleportTimeFromLastEnemy;
+            remainingTeleportTimeFromLastEnemy = 0f;
+        }
 
         spawnTimer -= Time.deltaTime;
         enemiesInScene = GameObject.FindGameObjectsWithTag("Enemy").Length;
         if (spawnTimer < 0 && enemiesInScene < maxEnemyCount)
         {
             SpawnEnemy();
-            spawnTimer = spawnDuration;
+            //spawnTimer = spawnDuration;
+            spawnTimer = remainingTeleportTimeFromLastEnemy;
         }
     }
 
@@ -58,38 +69,30 @@ public class EnemyManager : MonoBehaviour
         if (enemy != null)
             enemy.EnemyLog();
         Destroy(enemy.gameObject);
-
     }
 
     public GameObject GetClosestEnemy()
     {
-        /*float minDist = 9999999;
-        GameObject closestEnemyGO = null;
-
-
-        foreach (GameObject enemy in GameObject.FindGameObjectsWithTag("Enemy"))
-        {
-            if (Vector3.Distance(player.transform.position, enemy.transform.position) < minDist)
-            {
-                minDist = Vector3.Distance(player.transform.position, enemy.transform.position);
-                closestEnemyGO = enemy;
-            }
-        }*/
         return GameObject.FindGameObjectWithTag("Enemy");
     }
 
     void SpawnEnemy()
     {
-        // LEGACY
-        /*int spawnIndex = Random.Range(0, sapwnPoints.Count - 1);
-        Instantiate(enemy, sapwnPoints[spawnIndex].position, sapwnPoints[spawnIndex].rotation);*/
+        Vector3 spawnPos = Vector3.zero;
 
-        float dist = Random.Range(minSpawnRadius, maxSpawnRadius);
-        float angle = Random.Range(0, 360);
-
-        Vector3 spawnPos = CalculateDistantPoint(player.transform.position, dist, angle);
+        if (spawnMode == SpawnMode.DonutSpawn)
+        {
+            float dist = Random.Range(minSpawnRadius, maxSpawnRadius);
+            float angle = Random.Range(0, 360);
+            spawnPos = CalculateDistantPoint(player.transform.position, dist, angle);
+        }
+        else if (spawnMode == SpawnMode.VisibleSpawn)
+        {
+            spawnPos = CalculateVisibleSpawnPoint();
+        }
 
         SpawnNavMeshAgent(enemy, spawnPos);
+
         if (playerController.isEnemySpawnSpikeEnabled)
         {
             playerController.gameManager.isEventBasedDelay = true;
@@ -97,6 +100,7 @@ public class EnemyManager : MonoBehaviour
         }
     }
 
+    // --- Donut spawn helper ---
     public Vector3 CalculateDistantPoint(Vector3 playerPosition, float distance, float angle)
     {
         float angleRad = Mathf.Deg2Rad * angle;
@@ -104,6 +108,29 @@ public class EnemyManager : MonoBehaviour
         float zOffset = distance * Mathf.Sin(angleRad);
 
         return new Vector3(playerPosition.x + xOffset, playerPosition.y, playerPosition.z + zOffset);
+    }
+
+    // --- Visible spawn helper ---
+    public Vector3 CalculateVisibleSpawnPoint()
+    {
+        // Get player forward
+        Vector3 playerForward = player.transform.forward;
+
+        // Pick a random angle within half of visibleSpawnAngle on either side
+        float halfFov = visibleSpawnAngle / 2f;
+        float angleOffset = Random.Range(-halfFov, halfFov);
+
+        // Calculate rotation around Y
+        Quaternion rotation = Quaternion.Euler(0, angleOffset, 0);
+        Vector3 spawnDirection = rotation * playerForward;
+
+        // Pick a random distance in front of the player using min/maxSpawnRadius
+        float dist = Random.Range(minSpawnRadius, maxSpawnRadius);
+
+        // Calculate spawn point
+        Vector3 spawnPos = player.transform.position + spawnDirection.normalized * dist;
+        spawnPos.y = player.transform.position.y;
+        return spawnPos;
     }
 
     public Vector3 GetRandomWalkablePositionNear(Vector3 desiredPosition, float sampleRadius)
