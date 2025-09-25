@@ -28,6 +28,8 @@ public class AttributeScaling : MonoBehaviour
     public float maxScale = 3f;
     public float initialScale;
 
+    public float attributeScaleRadius;
+
     [Header("MouseSpeedAS Settings")]
     [Tooltip("Lerp factor for moving average of mouse speed")]
     public float mouseSmoothFactor = 0.1f;
@@ -212,9 +214,11 @@ public class AttributeScaling : MonoBehaviour
             case AttributeScalingMode.FixedAS:
                 if (useAttributeScaling)
                 {
-                    float normalizedSpike = Mathf.Clamp01(spikeMagnitude / maxSpikeMagnitude);
-                    float curveValue = spikeToScaleCurve.Evaluate(normalizedSpike);
-                    enemyCollider.radius = curveValue;
+                    /*float normalizedSpike = Mathf.Clamp01(spikeMagnitude / maxSpikeMagnitude);
+                    float curveValue = spikeToScaleCurve.Evaluate(normalizedSpike);*/
+
+
+                    enemyCollider.radius = initialScale * attributeScaleRadius;
                 }
                 else
                 {

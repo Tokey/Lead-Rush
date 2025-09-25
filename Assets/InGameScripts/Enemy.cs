@@ -388,7 +388,7 @@ public class Enemy : MonoBehaviour
             {
                 textWriter.WriteLine(
                     "SessionID,LatinRow,RoundNumber,SessionStart,KillTimestamp,RoundFPS,SpikeMagnitude," +
-                    "OnAimSpike,OnEnemySpawnSpike,OnMouseSpike,OnReloadSpike,AttributeScalingEnabled," +
+                    "OnAimSpike,OnEnemySpawnSpike,OnMouseSpike,OnReloadSpike,AttributeScalingEnabled," + "AttributeScaleRadius," +
                     "RoundIndex,EnemyHealth,MinAngleToPlayer,AngularSizeOnSpawn," +
                     "DegreeToTargetX,DegreeToTargetY,DegreeToShootX,DegreeToShootY," +
                     "TimeToTargetEnemy,TimeToHitEnemy,TimeToKillEnemy," +
@@ -409,6 +409,7 @@ public class Enemy : MonoBehaviour
                roundManager.roundConfigs.onMouseSpikeEnabled[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.roundConfigs.onReloadSpikeEnabled[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.roundConfigs.attributeScalingEnabled[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
+               roundManager.roundConfigs.attributeScaleRadius[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.indexArray[roundManager.currentRoundNumber - 1].ToString() + "," +
                currentHealth.ToString("F2") + "," +
                minAngleToPlayer.ToString("F2") + "," +
