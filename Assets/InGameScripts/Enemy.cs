@@ -180,7 +180,7 @@ public class Enemy : MonoBehaviour
 
         durationAlive += Time.deltaTime;
 
-        //DebugDrawEnemyHeadCollider(Color.yellow, 36);
+        DebugDrawEnemyHeadCollider(Color.yellow, 36);
 
         if (!startMissAngleFuse)
         {
