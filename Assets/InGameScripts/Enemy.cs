@@ -78,6 +78,16 @@ public class Enemy : MonoBehaviour
     private bool isTeleportingSmooth = false;
     private float teleportMoveElapsed = 0f;
 
+    // Lateral move after teleport (left -> right or right -> left)
+    [Header("Lateral move after teleport")]
+    [Tooltip("Distance to move sideways after teleport (world units)")]
+    public float lateralMoveDistance = 2f;
+    [Tooltip("Speed of lateral movement (world units/sec)")]
+    public float lateralMoveSpeed = 3f;
+    private bool lateralMoveActive = false;
+    private Vector3 lateralTargetPos;
+    private int lateralDirection = 1; // 1 = camera-right, -1 = camera-left
+
     float durationAlive;
     public FPSController fPSController;
 
@@ -90,6 +100,8 @@ public class Enemy : MonoBehaviour
 
     public GameObject invincibilityEffect;
 
+    RoundManager roundManager;
+
     void Start()
     {
         enemyAgent = gameObject.GetComponent<NavMeshAgent>();
@@ -98,6 +110,8 @@ public class Enemy : MonoBehaviour
         playerController = player.GetComponent<FPSController>();
 
         enemyManager = manager.GetComponent<EnemyManager>();
+
+        roundManager = manager.GetComponent<RoundManager>();
 
         maxHealth = playerController.enemyHealthGlobal;
         currentHealth = maxHealth;
@@ -145,6 +159,22 @@ public class Enemy : MonoBehaviour
 
         teleportInterval = UnityEngine.Random.Range(teleportIntAdd + min, teleportIntAdd + max);
         enemyManager.invincibilityTimer = enemyManager.remainingTeleportTimeFromLastEnemy;
+
+        // Set initial teleport target and place enemy instantly
+        TrySetTeleportTarget();
+        if (enemyAgent.enabled) enemyAgent.enabled = false;
+        transform.position = teleportTargetPos;
+
+        // Disable first smooth teleport
+        isTeleportingSmooth = false;
+        teleportMoveElapsed = teleportMoveDuration; // treat it as complete
+        teleportTimer = 0f; // start timing from now
+        playerController.readyToInduceSpike = true;
+
+        lateralMoveSpeed = roundManager.roundConfigs.enemyLateralMoveSpeed[roundManager.indexArray[roundManager.currentRoundNumber - 1]];
+
+        StartLateralMovementRandomDirection();
+
     }
 
     void Update()
@@ -170,18 +200,22 @@ public class Enemy : MonoBehaviour
 
         if (Vector3.Distance(player.transform.position, headCollider.transform.position) < 1.75f)
         {
-            Instantiate(explodePE, headTransform.position, headTransform.rotation);
-            player.GetComponent<FPSController>().PlayDeathSFX();
-            player.GetComponent<FPSController>().RespawnPlayer();
+            // NO PLAYER DEATH ON PROXIMITY
+            //Instantiate(explodePE, headTransform.position, headTransform.rotation);
+            //player.GetComponent<FPSController>().PlayDeathSFX();
+            //player.GetComponent<FPSController>().RespawnPlayer();
         }
 
-        largeCollider.radius = 3.0f + Mathf.PingPong(Time.time, 1.5f);
+        largeCollider.radius = Mathf.Lerp(0.85f, 2, Mathf.PingPong(Time.time * 2f, 1f));
+
+
 
 
         durationAlive += Time.deltaTime;
 
         //DEBUG VISUALIZER
         //DebugDrawEnemyHeadCollider(Color.yellow, 36);
+        //DebugDrawLargeCollider(Color.red, 36);
 
         if (!startMissAngleFuse)
         {
@@ -234,56 +268,13 @@ public class Enemy : MonoBehaviour
             transform.rotation = Quaternion.LookRotation(lookDir);
     }
 
-    void TeleportInViewMove()
-    {
-        if (isTeleportingSmooth)
-        {
-            teleportMoveElapsed += Time.deltaTime;
-            isTeleporting = true;
-            float t = teleportMoveElapsed / teleportMoveDuration;
-
-            //invincibilityEffect.SetActive(true);
-
-            if (t >= 1f)
-            {
-                t = 1f;
-                isTeleportingSmooth = false;
-                playerController.readyToInduceSpike = true;
-                player.GetComponent<FPSController>().angularDistanceFromEnemyOnStart = player.GetComponent<FPSController>().missAnglePublic;
-
-            }
-
-            transform.position = Vector3.Lerp(transform.position, teleportTargetPos, t);
-
-            Vector3 lookDir = player.transform.position - transform.position;
-            lookDir.y = 0;
-            if (lookDir.magnitude > 0.1f)
-                transform.rotation = Quaternion.LookRotation(lookDir);
-
-            //player.GetComponent<FPSController>().angularDistanceFromEnemyOnStart = player.GetComponent<FPSController>().missAnglePublic;
-            return;
-        }
-        else
-        {
-            isTeleporting = false;
-            /*if(!IsInvincible())
-                invincibilityEffect.SetActive(false);*/
-        }
-
-        teleportTimer += Time.deltaTime;
-        if (teleportTimer >= teleportInterval)
-        {
-            teleportTimer = 0f;
-            TrySetTeleportTarget();
-
-            player.GetComponent<FPSController>().UpdatePerShootingEventLog(false);
-        }
-    }
-
     void TrySetTeleportTarget()
     {
         if (mainCamera == null)
             mainCamera = Camera.main;
+
+        // Stop orbiting when we start a new teleport
+        lateralMoveActive = false;
 
         Vector3 chosenTarget = Vector3.zero;
         bool found = false;
@@ -321,11 +312,36 @@ public class Enemy : MonoBehaviour
         float max = UnityEngine.Random.Range(teleportIntervalMax, teleportRandSuperMax);
 
         float teleportIntAdd = playerController.gameManager.delayDuration / 1000.0f;
-
         teleportInterval = UnityEngine.Random.Range(teleportIntAdd + min, teleportIntAdd + max);
 
         PlayTeleportSFX();
     }
+
+
+    /// <summary>
+/// Begin continuous left/right orbit around the player after teleport.
+/// Uses lateralMoveSpeed as tangential speed (world units/sec).
+/// </summary>
+private void StartLateralMovementRandomDirection()
+{
+    // Randomly pick orbit direction: -1 (left/counterclockwise) or +1 (right/clockwise)
+    lateralDirection = (UnityEngine.Random.value < 0.5f) ? -1 : 1;
+
+    // Make sure we're in a valid horizontal position relative to player
+    Vector3 centerToEnemy = transform.position - player.transform.position;
+    centerToEnemy.y = 0f;
+
+    if (centerToEnemy.sqrMagnitude < 0.01f)
+    {
+        // If we somehow teleported exactly on the player center, nudge outward
+        Vector3 outDir = player.transform.right; // arbitrary horizontal direction
+        transform.position = player.transform.position + outDir * Mathf.Max(teleportRadius, 1f);
+    }
+
+    lateralMoveActive = true;
+    // (No fixed target — orbiting is driven per-frame in TeleportInViewMove)
+}
+
 
 
     public void TakeDamage(float damage)
@@ -376,7 +392,7 @@ public class Enemy : MonoBehaviour
 
     public void EnemyLog()
     {
-        RoundManager roundManager = manager.GetComponent<RoundManager>();
+        
         FPSController fPSController = player.GetComponent<FPSController>();
 
         string filenameEnemyLog = "Data\\Logs\\EnemyData_" + roundManager.fileNameSuffix + "_" + roundManager.sessionID + "_" + ".csv";
@@ -498,4 +514,126 @@ public class Enemy : MonoBehaviour
     {
         return durationAlive < enemyManager.invincibilityTimer || isTeleporting || isTeleportingSmooth;
     }
+
+    // Call this from Update(): DebugDrawLargeCollider(Color.cyan, 64);
+    void DebugDrawLargeCollider(Color color, int steps = 64)
+    {
+        if (largeCollider == null) return;                         // must be assigned in the Inspector
+        SphereCollider col = largeCollider;                        // it's already a SphereCollider field
+        GameObject go = col.gameObject;
+
+        // Get / add a LineRenderer on the largeCollider's GameObject
+        LineRenderer lr = go.GetComponent<LineRenderer>();
+        if (lr == null) lr = go.AddComponent<LineRenderer>();
+
+        lr.useWorldSpace = true;
+        lr.loop = true;
+        lr.positionCount = steps + 1;
+        lr.widthMultiplier = 0.03f;
+        lr.material = new Material(Shader.Find("Sprites/Default")); // simple unlit
+        lr.startColor = color;
+        lr.endColor = color;
+
+        // World-space center & radius (handles non-uniform scale)
+        Vector3 center = col.transform.TransformPoint(col.center);
+        float worldRadius = col.radius * Mathf.Max(
+            Mathf.Abs(col.transform.lossyScale.x),
+            Mathf.Abs(col.transform.lossyScale.y),
+            Mathf.Abs(col.transform.lossyScale.z)
+        );
+
+        // Billboard to camera
+        Camera cam = Camera.main;
+        if (cam == null) return;
+        Vector3 right = cam.transform.right.normalized;
+        Vector3 up = cam.transform.up.normalized;
+
+        // Circle in camera plane
+        float delta = (2f * Mathf.PI) / steps;
+        for (int i = 0; i <= steps; i++)
+        {
+            float a = i * delta;
+            Vector3 offset = (Mathf.Cos(a) * right + Mathf.Sin(a) * up) * worldRadius;
+            lr.SetPosition(i, center + offset);
+        }
+    }
+
+    void TeleportInViewMove()
+    {
+        if (isTeleportingSmooth)
+        {
+            teleportMoveElapsed += Time.deltaTime;
+            isTeleporting = true;
+            float t = teleportMoveElapsed / teleportMoveDuration;
+
+            if (t >= 1f)
+            {
+                t = 1f;
+                isTeleportingSmooth = false;
+                playerController.readyToInduceSpike = true;
+                player.GetComponent<FPSController>().angularDistanceFromEnemyOnStart = player.GetComponent<FPSController>().missAnglePublic;
+
+                // Begin continuous orbit (left/right) after finishing teleport
+                StartLateralMovementRandomDirection();
+            }
+
+            transform.position = Vector3.Lerp(transform.position, teleportTargetPos, t);
+
+            Vector3 lookDir = player.transform.position - transform.position;
+            lookDir.y = 0;
+            if (lookDir.magnitude > 0.1f)
+                transform.rotation = Quaternion.LookRotation(lookDir);
+
+            return;
+        }
+        else
+        {
+            isTeleporting = false;
+        }
+
+        // --- Continuous orbit around player while not teleporting ---
+        if (lateralMoveActive)
+        {
+            // Tangential speed (world units/sec) -> angular speed (deg/sec)
+            Vector3 centerToEnemy = transform.position - player.transform.position;
+            centerToEnemy.y = 0f;
+
+            float radius = centerToEnemy.magnitude;
+            if (radius < 0.05f)
+            {
+                // Fallback to a sane radius if we're too close to center
+                radius = Mathf.Max(teleportRadius, 0.5f);
+                // Nudge outward to avoid singularity
+                Vector3 outDir = (transform.position - player.transform.position);
+                outDir.y = 0f;
+                if (outDir.sqrMagnitude < 1e-4f) outDir = player.transform.right;
+                outDir.Normalize();
+                transform.position = player.transform.position + outDir * radius;
+            }
+
+            // angular speed = v / r (rad/s) -> deg/s
+            float angularDegPerSec = (lateralMoveSpeed / Mathf.Max(radius, 0.0001f)) * Mathf.Rad2Deg;
+            float deltaAngle = lateralDirection * angularDegPerSec * Time.deltaTime;
+
+            transform.RotateAround(player.transform.position, Vector3.up, deltaAngle);
+
+            // Keep facing the player
+            Vector3 lookDir = player.transform.position - transform.position;
+            lookDir.y = 0f;
+            if (lookDir.sqrMagnitude > 1e-4f)
+                transform.rotation = Quaternion.LookRotation(lookDir);
+        }
+        // -------------------------------------------------------------
+
+        // Handle next teleport timing
+        teleportTimer += Time.deltaTime;
+        if (teleportTimer >= teleportInterval)
+        {
+            teleportTimer = 0f;
+            TrySetTeleportTarget();
+            player.GetComponent<FPSController>().UpdatePerShootingEventLog(false);
+        }
+    }
+
+
 }

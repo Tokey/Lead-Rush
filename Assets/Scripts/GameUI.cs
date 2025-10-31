@@ -27,6 +27,7 @@ public class GameUI : MonoBehaviour
 
     public TMPro.TMP_Text roundText;
 
+    public GameObject enemyRespawningText;
 
     public GameObject player;
 
@@ -179,6 +180,8 @@ public class GameUI : MonoBehaviour
                 highAlertTop.gameObject.SetActive(false);
 
             }
+
+            enemyRespawningText.SetActive(false);
         }
         else
         {
@@ -186,6 +189,8 @@ public class GameUI : MonoBehaviour
             highAlertBottom.gameObject.SetActive(false);
             highAlertLeft.gameObject.SetActive(false);
             highAlertRight.gameObject.SetActive(false);
+
+            enemyRespawningText.SetActive(true);
         }
     }
     void UpdateUITexts()

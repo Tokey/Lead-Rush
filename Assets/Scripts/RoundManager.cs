@@ -18,6 +18,7 @@ public struct RoundConfigs
     public List<bool> onEnemySpawnSpikeEnabled;
     public List<bool> attributeScalingEnabled;
     public List<float> attributeScaleRadius;
+    public List<float> enemyLateralMoveSpeed;
 }
 
 //ShootingEventLog
@@ -410,6 +411,7 @@ public class RoundManager : MonoBehaviour
             roundConfigs.onEnemySpawnSpikeEnabled.Add(false);
             roundConfigs.attributeScalingEnabled.Add(false);
             roundConfigs.attributeScaleRadius.Add(1f);
+            roundConfigs.enemyLateralMoveSpeed.Add(0f);
             
         }
     }
@@ -507,6 +509,7 @@ public class RoundManager : MonoBehaviour
                         roundConfigs.onEnemySpawnSpikeEnabled.Add(bool.Parse(dataValues[5]));
                         roundConfigs.attributeScalingEnabled.Add(bool.Parse(dataValues[6]));
                         roundConfigs.attributeScaleRadius.Add(float.Parse(dataValues[7]));
+                        roundConfigs.enemyLateralMoveSpeed.Add(float.Parse(dataValues[8]));
                     }
                 }
             }

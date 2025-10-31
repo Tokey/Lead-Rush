@@ -1,0 +1,13 @@
+SessionID,LatinRow,RoundNumber,SessionStart,KillTimestamp,RoundFPS,SpikeMagnitude,OnAimSpike,OnEnemySpawnSpike,OnMouseSpike,OnReloadSpike,AttributeScalingEnabled,AttributeScaleRadius,RoundIndex,EnemyHealth,MinAngleToPlayer,AngularSizeOnSpawn,DegreeToTargetX,DegreeToTargetY,DegreeToShootX,DegreeToShootY,TimeToTargetEnemy,TimeToHitEnemy,TimeToKillEnemy,TargetMarked,TargetShot,DurationAlive,TimeOnTargetEachEnemy
+1,1,1,25:15:23:04:15:56,16:15:58.637,500,225,True,False,False,False,True,1.5,0,-400.00,10.05,4.07,4.80,3.30,5.20,4.40,0.842,1.208,1.208,True,True,1.208,0.337
+1,1,1,25:15:23:04:15:56,16:16:01.422,500,225,True,False,False,False,True,1.5,0,-400.00,1.30,4.06,31.70,5.90,33.70,7.40,1.941,2.801,2.801,True,True,2.004,0.646
+1,1,1,25:15:23:04:15:56,16:16:03.005,500,225,True,False,False,False,True,1.5,0,-400.00,1.13,4.07,33.10,5.70,41.90,8.10,0.865,1.583,1.583,True,True,1.327,0.141
+1,1,1,25:15:23:04:15:56,16:16:04.366,500,225,True,False,False,False,True,1.5,0,-400.00,3.24,4.07,31.80,5.50,47.20,6.30,0.572,1.360,1.360,True,True,1.345,0.197
+1,1,1,25:15:23:04:15:56,16:16:05.805,500,225,True,False,False,False,True,1.5,0,-400.00,20.78,4.07,21.40,7.60,21.70,8.10,1.162,1.440,1.440,True,True,1.164,0.283
+1,1,1,25:15:23:04:15:56,16:16:07.991,500,225,True,False,False,False,True,1.5,0,-400.00,9.65,4.07,23.50,5.10,23.50,5.10,2.178,2.185,2.185,True,True,1.249,0.012
+1,1,1,25:15:23:04:15:56,16:16:10.404,500,225,True,False,False,False,True,1.5,0,-400.00,17.67,4.06,32.80,8.20,32.90,8.60,2.170,2.415,2.415,True,True,1.767,0.248
+1,1,1,25:15:23:04:15:56,16:16:12.541,500,225,True,False,False,False,True,1.5,0,-400.00,22.31,4.04,20.40,9.30,20.80,9.50,1.716,2.137,2.137,True,True,1.536,0.424
+1,1,1,25:15:23:04:15:56,16:16:18.701,500,225,True,False,False,False,True,1.5,0,-400.00,9.54,3.89,4.10,1.40,57.40,10.30,1.930,6.160,6.160,True,True,5.555,1.412
+1,1,1,25:15:23:04:15:56,16:16:20.918,500,225,True,False,False,False,True,1.5,0,-400.00,22.63,4.07,23.20,5.60,23.60,6.30,1.665,2.217,2.217,True,True,1.893,0.171
+1,1,1,25:15:23:04:15:56,16:16:25.581,500,225,True,False,False,False,True,1.5,0,-400.00,1.11,4.03,22.80,18.80,22.90,18.80,4.424,4.663,4.663,True,True,4.305,0.242
+1,1,1,25:15:23:04:15:56,16:16:27.319,500,225,True,False,False,False,True,1.5,0,-400.00,23.88,4.08,9.30,4.00,9.30,4.00,1.680,1.738,1.738,True,True,0.729,0.062
