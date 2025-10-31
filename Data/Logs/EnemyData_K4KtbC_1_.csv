@@ -1,4 +1,0 @@
-SessionID,LatinRow,RoundNumber,SessionStart,KillTimestamp,RoundFPS,SpikeMagnitude,OnAimSpike,OnEnemySpawnSpike,OnMouseSpike,OnReloadSpike,AttributeScalingEnabled,RoundIndex,EnemyHealth,MinAngleToPlayer,AngularSizeOnSpawn,DegreeToTargetX,DegreeToTargetY,DegreeToShootX,DegreeToShootY,TimeToTargetEnemy,TimeToHitEnemy,TimeToKillEnemy,TargetMarked,TargetShot,DurationAlive,TimeOnTargetEachEnemy
-1,1,1,25:59:25:01:59:34,01:59:40.414,500,1,True,False,False,False,False,0,-400.00,5.51,5.85,67.10,47.30,68.70,47.70,4.258,4.751,4.751,True,True,4.751,0.228
-1,1,1,25:59:25:01:59:34,01:59:42.599,500,1,True,False,False,False,False,0,-400.00,16.32,5.82,37.60,20.50,38.30,20.60,2.044,2.185,2.185,True,True,1.870,0.145
-1,1,1,25:59:25:01:59:34,01:59:50.574,500,1,True,False,False,False,False,0,-400.00,18.74,5.85,56.90,33.50,58.00,33.90,7.843,7.976,7.976,True,True,7.540,0.138
