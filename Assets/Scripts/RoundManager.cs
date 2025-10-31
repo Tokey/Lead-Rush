@@ -566,7 +566,7 @@ public class RoundManager : MonoBehaviour
             {
                 string header =
                     "sessionID,latinRow,currentRoundNumber,sessionStartTime,now,roundFPS,spikeMagnitude," +
-                    "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius,"+
+                    "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius,"+ "enemyMoveSpeed," +
                     "indexArray,score,shotsFiredPerRound,shotsHitPerRound,headshotsHitPerRound,realoadCountPerRound," +
                     "tacticalReloadCountPerRound,accuracy,roundKills,roundDeaths,distanceTravelledPerRound,delXCumilative,delYCumilative," +
                     "totalDelXY,frametimeCumulativeRound,roundFrameCount,avgFT,avgFPS,perRoundAimSpikeCount,perRoundReloadSpikeCount," +
@@ -610,6 +610,7 @@ public class RoundManager : MonoBehaviour
                 roundConfigs.onReloadSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
                 roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
                 roundConfigs.attributeScaleRadius[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                roundConfigs.enemyLateralMoveSpeed[indexArray[currentRoundNumber - 1]].ToString() + "," +
                 indexArray[currentRoundNumber - 1].ToString() + "," +
                 playerController.score + "," +
                 playerController.shotsFiredPerRound + "," +
@@ -666,7 +667,7 @@ public class RoundManager : MonoBehaviour
             {
                 string header =
                     "sessionID,latinRow,currentRoundNumber,roundFPS,spikeMagnitude," +
-                    "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," +
+                    "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," + "enemyMoveSpeed," +
                     "indexArray,roundTimer,time,mouseX,mouseY,playerX,playerY,playerZ," +
                     "scorePerSec,playerRot_w,playerRot_x,playerRot_y,playerRot_z," +
                     "enemyPos_x,enemyPos_y,enemyPos_z," +
@@ -691,6 +692,7 @@ public class RoundManager : MonoBehaviour
                     roundConfigs.onReloadSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     roundConfigs.attributeScaleRadius[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.enemyLateralMoveSpeed[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     indexArray[currentRoundNumber - 1].ToString() + "," +
                     log.roundTimer[i].ToString() + "," +
                     log.time[i].ToString() + "," +
@@ -736,7 +738,7 @@ public class RoundManager : MonoBehaviour
                 // Write header first, only once
                 string header =
                 "sessionID,latinRow,currentRoundNumber,roundFPS,spikeMagnitude," +
-                "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," +
+                "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," + "enemyMoveSpeed," +
                 "indexArray,roundTimer,time,mouseX,mouseY,playerX,playerY,playerZ," +
                 "playerRot_w,playerRot_x,playerRot_y,playerRot_z," +
                 "enemyPos_x,enemyPos_y,enemyPos_z," +
@@ -765,6 +767,7 @@ public class RoundManager : MonoBehaviour
                    roundConfigs.onReloadSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
                    roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
                    roundConfigs.attributeScaleRadius[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                   roundConfigs.enemyLateralMoveSpeed[indexArray[currentRoundNumber - 1]].ToString() + "," +
                    indexArray[currentRoundNumber - 1].ToString() + "," +
                    log.roundTimer[i].ToString() + "," +
                    log.time[i].ToString() + "," +
@@ -827,7 +830,7 @@ public class RoundManager : MonoBehaviour
             {
                 string header =
                  "sessionID,latinRow,currentRoundNumber,roundFPS,spikeMagnitude," +
-                 "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," +
+                 "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," + "enemyMoveSpeed," +
                  "indexArray,time,roundTimer,mouseX,mouseY,playerX,playerY,playerZ," +
                  "playerRot_w,playerRot_x,playerRot_y,playerRot_z," +
                  "enemyPos_x,enemyPos_y,enemyPos_z," +
@@ -856,6 +859,7 @@ public class RoundManager : MonoBehaviour
                     roundConfigs.onReloadSpikeEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     roundConfigs.attributeScalingEnabled[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     roundConfigs.attributeScaleRadius[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.enemyLateralMoveSpeed[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     indexArray[currentRoundNumber - 1].ToString() + "," +
                     log.time[i].ToString() + "," +
                     log.roundTimer[i].ToString() + "," +
