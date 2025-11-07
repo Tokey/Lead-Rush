@@ -1,4 +1,4 @@
-using Demo.Scripts.Runtime;
+﻿using Demo.Scripts.Runtime;
 using Michsky.UI.Heat;
 using System;
 using System.Collections;
@@ -80,8 +80,6 @@ public class Enemy : MonoBehaviour
 
     // Lateral move after teleport (left -> right or right -> left)
     [Header("Lateral move after teleport")]
-    [Tooltip("Distance to move sideways after teleport (world units)")]
-    public float lateralMoveDistance = 2f;
     [Tooltip("Speed of lateral movement (world units/sec)")]
     public float lateralMoveSpeed = 3f;
     private bool lateralMoveActive = false;
@@ -101,6 +99,19 @@ public class Enemy : MonoBehaviour
     public GameObject invincibilityEffect;
 
     RoundManager roundManager;
+
+    [Header("Unpredictable Mode")]
+    public bool unpredictable = false;
+
+    [Tooltip("Frequency multiplier for both Y bob and speed variation.")]
+    [Range(0.05f, 5f)] public float unpredictableFreq = 1f;
+
+    // internals (no sliders)
+    private float lateralCenterY;          // set after each teleport
+    private float avgAbsOrbitSpeed = 0f;   // running avg of |speed| for compensation
+
+
+
 
     void Start()
     {
@@ -172,6 +183,7 @@ public class Enemy : MonoBehaviour
         playerController.readyToInduceSpike = true;
 
         lateralMoveSpeed = roundManager.roundConfigs.enemyLateralMoveSpeed[roundManager.indexArray[roundManager.currentRoundNumber - 1]];
+        unpredictable = !roundManager.roundConfigs.predictableEnemyMovement[roundManager.indexArray[roundManager.currentRoundNumber - 1]];
 
         StartLateralMovementRandomDirection();
 
@@ -339,7 +351,7 @@ private void StartLateralMovementRandomDirection()
     }
 
     lateralMoveActive = true;
-    // (No fixed target � orbiting is driven per-frame in TeleportInViewMove)
+    // (No fixed target — orbiting is driven per-frame in TeleportInViewMove)
 }
 
 
@@ -405,7 +417,7 @@ private void StartLateralMovementRandomDirection()
             {
                 textWriter.WriteLine(
                     "SessionID,LatinRow,RoundNumber,SessionStart,KillTimestamp,RoundFPS,SpikeMagnitude," +
-                    "OnAimSpike,OnEnemySpawnSpike,OnMouseSpike,OnReloadSpike,AttributeScalingEnabled," + "AttributeScaleRadius," + "EnemyMoveSpeed," +
+                    "OnAimSpike,OnEnemySpawnSpike,OnMouseSpike,OnReloadSpike,AttributeScalingEnabled," + "AttributeScaleRadius," + "EnemyMoveSpeed," + "PredictableEnemyMovement," +
                     "RoundIndex,EnemyHealth,MinAngleToPlayer,AngularSizeOnSpawn," +
                     "DegreeToTargetX,DegreeToTargetY,DegreeToShootX,DegreeToShootY," +
                     "TimeToTargetEnemy,TimeToHitEnemy,TimeToKillEnemy," +
@@ -428,6 +440,7 @@ private void StartLateralMovementRandomDirection()
                roundManager.roundConfigs.attributeScalingEnabled[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.roundConfigs.attributeScaleRadius[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.roundConfigs.enemyLateralMoveSpeed[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
+               roundManager.roundConfigs.predictableEnemyMovement[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.indexArray[roundManager.currentRoundNumber - 1].ToString() + "," +
                currentHealth.ToString("F2") + "," +
                minAngleToPlayer.ToString("F2") + "," +
@@ -572,62 +585,108 @@ private void StartLateralMovementRandomDirection()
                 t = 1f;
                 isTeleportingSmooth = false;
                 playerController.readyToInduceSpike = true;
-                player.GetComponent<FPSController>().angularDistanceFromEnemyOnStart = player.GetComponent<FPSController>().missAnglePublic;
+                player.GetComponent<FPSController>().angularDistanceFromEnemyOnStart =
+                    player.GetComponent<FPSController>().missAnglePublic;
 
-                // Begin continuous orbit (left/right) after finishing teleport
+                // Store teleport Y for asymmetric bobbing
+                lateralCenterY = transform.position.y;
+
+                // same random direction start each teleport
                 StartLateralMovementRandomDirection();
             }
 
             transform.position = Vector3.Lerp(transform.position, teleportTargetPos, t);
 
-            Vector3 lookDir = player.transform.position - transform.position;
-            lookDir.y = 0;
-            if (lookDir.magnitude > 0.1f)
-                transform.rotation = Quaternion.LookRotation(lookDir);
+            Vector3 lookDirT = player.transform.position - transform.position;
+            lookDirT.y = 0;
+            if (lookDirT.magnitude > 0.1f)
+                transform.rotation = Quaternion.LookRotation(lookDirT);
 
             return;
         }
-        else
+
+        isTeleporting = false;
+        if (!lateralMoveActive) return;
+
+        // --- ensure radius ---
+        Vector3 centerToEnemy = transform.position - player.transform.position;
+        centerToEnemy.y = 0f;
+        float radius = centerToEnemy.magnitude;
+        if (radius < 0.05f)
         {
-            isTeleporting = false;
+            radius = Mathf.Max(teleportRadius, 0.5f);
+            Vector3 outDir = (transform.position - player.transform.position);
+            outDir.y = 0f;
+            if (outDir.sqrMagnitude < 1e-4f) outDir = player.transform.right;
+            outDir.Normalize();
+            transform.position = player.transform.position + outDir * radius;
         }
 
-        // --- Continuous orbit around player while not teleporting ---
-        if (lateralMoveActive)
+        float effectiveSpeed = lateralMoveSpeed;
+        float targetY = transform.position.y;
+        float time = Time.time;
+        float dt = Time.deltaTime;
+
+        if (unpredictable)
         {
-            // Tangential speed (world units/sec) -> angular speed (deg/sec)
-            Vector3 centerToEnemy = transform.position - player.transform.position;
-            centerToEnemy.y = 0f;
+            // frequency tied to base speed
+            float freq = Mathf.Max(0.05f, lateralMoveSpeed * unpredictableFreq);
 
-            float radius = centerToEnemy.magnitude;
-            if (radius < 0.05f)
-            {
-                // Fallback to a sane radius if we're too close to center
-                radius = Mathf.Max(teleportRadius, 0.5f);
-                // Nudge outward to avoid singularity
-                Vector3 outDir = (transform.position - player.transform.position);
-                outDir.y = 0f;
-                if (outDir.sqrMagnitude < 1e-4f) outDir = player.transform.right;
-                outDir.Normalize();
-                transform.position = player.transform.position + outDir * radius;
-            }
+            // === Perlin direction and magnitude (bidirectional but compensated) ===
+            float perlinSpeed = Mathf.PerlinNoise(perlinSeedSpeed, time * freq);
+            float sNoise = (perlinSpeed - 0.5f) * 2f; // [-1, 1]
 
-            // angular speed = v / r (rad/s) -> deg/s
-            float angularDegPerSec = (lateralMoveSpeed / Mathf.Max(radius, 0.0001f)) * Mathf.Rad2Deg;
-            float deltaAngle = lateralDirection * angularDegPerSec * Time.deltaTime;
+            float dirSign = Mathf.Sign(sNoise == 0f ? 1f : sNoise);
+            float magBlend = Mathf.Lerp(0.7f, 1.3f, Mathf.Abs(sNoise)); // speed fluctuation
+            float signedMag = dirSign * lateralMoveSpeed * magBlend;
 
-            transform.RotateAround(player.transform.position, Vector3.up, deltaAngle);
+            // compensate toward avg magnitude ≈ lateralMoveSpeed
+            float alpha = 1f - Mathf.Exp(-5f * dt);
+            avgAbsOrbitSpeed = Mathf.Lerp(
+                avgAbsOrbitSpeed <= 0f ? Mathf.Abs(signedMag) : avgAbsOrbitSpeed,
+                Mathf.Abs(signedMag),
+                alpha);
+            float gain = lateralMoveSpeed / Mathf.Max(0.001f, avgAbsOrbitSpeed);
+            gain = Mathf.Clamp(gain, 0.7f, 1.3f);
+            effectiveSpeed = signedMag * gain;
 
-            // Keep facing the player
-            Vector3 lookDir = player.transform.position - transform.position;
-            lookDir.y = 0f;
-            if (lookDir.sqrMagnitude > 1e-4f)
-                transform.rotation = Quaternion.LookRotation(lookDir);
+            // === Y bob, bounded ===
+            float perlinY = Mathf.PerlinNoise(perlinSeedY, time * freq);
+            float yNoise = (perlinY - 0.5f) * 2f;
+            float worldMinY = player.transform.position.y + teleportYMin;
+            float worldMaxY = player.transform.position.y + teleportYMax;
+            float upAvail = Mathf.Max(0f, worldMaxY - lateralCenterY);
+            float downAvail = Mathf.Max(0f, lateralCenterY - worldMinY);
+            float yOffset = (yNoise >= 0f) ? (yNoise * upAvail) : (yNoise * downAvail);
+            targetY = Mathf.Clamp(lateralCenterY + yOffset, worldMinY, worldMaxY);
+
+            // safety floor
+            float floor = 0.3f * lateralMoveSpeed;
+            if (Mathf.Abs(effectiveSpeed) < floor)
+                effectiveSpeed = dirSign * floor;
         }
-        // -------------------------------------------------------------
 
-        // Handle next teleport timing
-        teleportTimer += Time.deltaTime;
+        // === orbit motion ===
+        float angularDegPerSec = (effectiveSpeed / Mathf.Max(radius, 0.0001f)) * Mathf.Rad2Deg;
+        float deltaAngle = (unpredictable ? angularDegPerSec : lateralDirection * angularDegPerSec) * Time.deltaTime;
+        transform.RotateAround(player.transform.position, Vector3.up, deltaAngle);
+
+        // === Y motion only when unpredictable ===
+        if (unpredictable)
+        {
+            Vector3 pos = transform.position;
+            pos.y = Mathf.Lerp(pos.y, targetY, dt * 3f);
+            transform.position = pos;
+        }
+
+        // === Always face player ===
+        Vector3 lookDir = player.transform.position - transform.position;
+        lookDir.y = 0f;
+        if (lookDir.sqrMagnitude > 1e-4f)
+            transform.rotation = Quaternion.LookRotation(lookDir);
+
+        // === Teleport timing ===
+        teleportTimer += dt;
         if (teleportTimer >= teleportInterval)
         {
             teleportTimer = 0f;

@@ -279,13 +279,14 @@ MonoBehaviour:
   teleportRandSuperMax: 2
   teleportFOV: 0.6
   teleportMoveDuration: 0.05
-  lateralMoveDistance: 2
-  lateralMoveSpeed: 1.5
+  lateralMoveSpeed: 1
   fPSController: {fileID: 0}
   audioSource: {fileID: 0}
   teleportSFX: {fileID: 8300000, guid: 7c48b2dcc98b12242b8fc9bd4118d322, type: 3}
   isTeleporting: 0
   invincibilityEffect: {fileID: 6606950192301296047}
+  unpredictable: 1
+  unpredictableFreq: 0.3
 --- !u!1 &5628584378806856085
 GameObject:
   m_ObjectHideFlags: 0

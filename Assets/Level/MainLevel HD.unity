@@ -2983,7 +2983,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1565341202201293845, guid: 09dfc55288e2c514d98ea3b20e78195b, type: 3}
       propertyPath: fireRate
-      value: 160
+      value: 240
       objectReference: {fileID: 0}
     - target: {fileID: 1565341202201293845, guid: 09dfc55288e2c514d98ea3b20e78195b, type: 3}
       propertyPath: shootPoint
@@ -7975,6 +7975,8 @@ MonoBehaviour:
     onEnemySpawnSpikeEnabled: 
     attributeScalingEnabled: 
     attributeScaleRadius: []
+    enemyLateralMoveSpeed: []
+    predictableEnemyMovement: 
   roundDuration: 60
   roundTimer: 0
   totalRoundNumber: 0
