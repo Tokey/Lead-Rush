@@ -5,6 +5,7 @@ using Kinemation.FPSFramework.Runtime.Layers;
 using Kinemation.FPSFramework.Runtime.Recoil;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -313,6 +314,8 @@ namespace Demo.Scripts.Runtime
 
         public bool readyToInduceSpike = true;
 
+        public int eventCount;
+
 
         private void InitLayers()
         {
@@ -455,6 +458,7 @@ namespace Demo.Scripts.Runtime
             shootingEventLog.angularDistanceFromEnemyOnStart = new List<float>();
             shootingEventLog.targetTimeOnEnemy = new List<float>();
             readyToInduceSpike = true;
+            eventCount = 0;
         }
 
         private void UnequipWeapon()
@@ -1963,6 +1967,8 @@ namespace Demo.Scripts.Runtime
             postSpikeFirstShotMisses = 0;
             postSpikeFirstShotAccuracy = 0f;
             elapsedTimeFromLastSpike = 0f;
+
+            eventCount = 0;
 
 
 

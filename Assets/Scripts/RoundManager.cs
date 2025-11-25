@@ -20,6 +20,7 @@ public struct RoundConfigs
     public List<float> attributeScaleRadius;
     public List<float> enemyLateralMoveSpeed;
     public List<bool> predictableEnemyMovement;
+    public List<float> temporalASMagnitude;
 }
 
 //ShootingEventLog
@@ -414,8 +415,7 @@ public class RoundManager : MonoBehaviour
             roundConfigs.attributeScaleRadius.Add(1f);
             roundConfigs.enemyLateralMoveSpeed.Add(0f);
             roundConfigs.predictableEnemyMovement.Add(true);
-
-            
+            roundConfigs.temporalASMagnitude.Add(0f);
         }
     }
 
@@ -514,6 +514,8 @@ public class RoundManager : MonoBehaviour
                         roundConfigs.attributeScaleRadius.Add(float.Parse(dataValues[7]));
                         roundConfigs.enemyLateralMoveSpeed.Add(float.Parse(dataValues[8]));
                         roundConfigs.predictableEnemyMovement.Add(bool.Parse(dataValues[9]));
+                        roundConfigs.temporalASMagnitude.Add(float.Parse(dataValues[10]));
+
                     }
                 }
             }
@@ -570,9 +572,9 @@ public class RoundManager : MonoBehaviour
             {
                 string header =
                     "sessionID,latinRow,currentRoundNumber,sessionStartTime,now,roundFPS,spikeMagnitude," +
-                    "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius,"+ "enemyMoveSpeed," + "predictableEnemyMovement," +
+                    "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius,"+ "enemyMoveSpeed," + "predictableEnemyMovement," + "usingTemporalAS," +
                     "indexArray,score,shotsFiredPerRound,shotsHitPerRound,headshotsHitPerRound,realoadCountPerRound," +
-                    "tacticalReloadCountPerRound,accuracy,roundKills,roundDeaths,distanceTravelledPerRound,delXCumilative,delYCumilative," +
+                    "tacticalReloadCountPerRound,accuracy,roundKills,roundDeaths,eventCount,successRate,distanceTravelledPerRound,delXCumilative,delYCumilative," +
                     "totalDelXY,frametimeCumulativeRound,roundFrameCount,avgFT,avgFPS,perRoundAimSpikeCount,perRoundReloadSpikeCount," +
                     "perRoundMouseMovementSpikeCount,spikeDurationCumulative,avgspikeDurationCumulative,perRoundEnemySpawnSpikeCount," +
                     "degreeToShootXCumulative,degreeToTargetXCumulative,minAnlgeToEnemyCumulative,enemySizeCumulative,timeToTargetEnemyCumulative," +
@@ -600,6 +602,8 @@ public class RoundManager : MonoBehaviour
             double avgFT = frametimeCumulativeRound / roundFrameCount;
             double avgFPS = 1 / avgFT;
 
+            double successRate =  ((float)playerController.roundKills / (float)playerController.eventCount)*100.0;
+
             String roundLogLine =
                 sessionID.ToString() + "," +
                 latinRow.ToString() + "," +
@@ -616,6 +620,7 @@ public class RoundManager : MonoBehaviour
                 roundConfigs.attributeScaleRadius[indexArray[currentRoundNumber - 1]].ToString() + "," +
                 roundConfigs.enemyLateralMoveSpeed[indexArray[currentRoundNumber - 1]].ToString() + "," +
                 roundConfigs.predictableEnemyMovement[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                roundConfigs.temporalASMagnitude[indexArray[currentRoundNumber - 1]].ToString() + "," +
                 indexArray[currentRoundNumber - 1].ToString() + "," +
                 playerController.score + "," +
                 playerController.shotsFiredPerRound + "," +
@@ -626,6 +631,8 @@ public class RoundManager : MonoBehaviour
                 accuracy.ToString() + "," +
                 playerController.roundKills + "," +
                 playerController.roundDeaths + "," +
+                playerController.eventCount + "," +
+                successRate.ToString() + "," +
                 playerController.distanceTravelledPerRound + "," +
                 playerController.delXCumilative.ToString() + "," +
                 playerController.delYCumilative.ToString() + "," +
@@ -672,7 +679,7 @@ public class RoundManager : MonoBehaviour
             {
                 string header =
                     "sessionID,latinRow,currentRoundNumber,roundFPS,spikeMagnitude," +
-                    "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," + "enemyMoveSpeed," + "predictableEnemyMovement," +
+                    "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," + "enemyMoveSpeed," + "predictableEnemyMovement," + "usingTemporalAS," +
                     "indexArray,roundTimer,time,mouseX,mouseY,playerX,playerY,playerZ," +
                     "scorePerSec,playerRot_w,playerRot_x,playerRot_y,playerRot_z," +
                     "enemyPos_x,enemyPos_y,enemyPos_z," +
@@ -699,6 +706,7 @@ public class RoundManager : MonoBehaviour
                     roundConfigs.attributeScaleRadius[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     roundConfigs.enemyLateralMoveSpeed[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     roundConfigs.predictableEnemyMovement[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.temporalASMagnitude[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     indexArray[currentRoundNumber - 1].ToString() + "," +
                     log.roundTimer[i].ToString() + "," +
                     log.time[i].ToString() + "," +
@@ -744,7 +752,7 @@ public class RoundManager : MonoBehaviour
                 // Write header first, only once
                 string header =
                 "sessionID,latinRow,currentRoundNumber,roundFPS,spikeMagnitude," +
-                "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," + "enemyMoveSpeed," + "predictableEnemyMovement," +
+                "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," + "enemyMoveSpeed," + "predictableEnemyMovement," + "usingTemporalAS," +
                 "indexArray,roundTimer,time,mouseX,mouseY,playerX,playerY,playerZ," +
                 "playerRot_w,playerRot_x,playerRot_y,playerRot_z," +
                 "enemyPos_x,enemyPos_y,enemyPos_z," +
@@ -775,6 +783,7 @@ public class RoundManager : MonoBehaviour
                    roundConfigs.attributeScaleRadius[indexArray[currentRoundNumber - 1]].ToString() + "," +
                    roundConfigs.enemyLateralMoveSpeed[indexArray[currentRoundNumber - 1]].ToString() + "," +
                    roundConfigs.predictableEnemyMovement[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                   roundConfigs.temporalASMagnitude[indexArray[currentRoundNumber - 1]].ToString() + "," +
                    indexArray[currentRoundNumber - 1].ToString() + "," +
                    log.roundTimer[i].ToString() + "," +
                    log.time[i].ToString() + "," +
@@ -837,7 +846,7 @@ public class RoundManager : MonoBehaviour
             {
                 string header =
                  "sessionID,latinRow,currentRoundNumber,roundFPS,spikeMagnitude," +
-                 "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," + "enemyMoveSpeed," + "predictableEnemyMovement," +
+                 "onAimSpikeEnabled,onEnemySpawnSpikeEnabled,onMouseSpikeEnabled,onReloadSpikeEnabled,attributeScalingEnabled," + "attributeScaleRadius," + "enemyMoveSpeed," + "predictableEnemyMovement," + "usingTemporalAS," +
                  "indexArray,time,roundTimer,mouseX,mouseY,playerX,playerY,playerZ," +
                  "playerRot_w,playerRot_x,playerRot_y,playerRot_z," +
                  "enemyPos_x,enemyPos_y,enemyPos_z," +
@@ -868,6 +877,7 @@ public class RoundManager : MonoBehaviour
                     roundConfigs.attributeScaleRadius[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     roundConfigs.enemyLateralMoveSpeed[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     roundConfigs.predictableEnemyMovement[indexArray[currentRoundNumber - 1]].ToString() + "," +
+                    roundConfigs.temporalASMagnitude[indexArray[currentRoundNumber - 1]].ToString() + "," +
                     indexArray[currentRoundNumber - 1].ToString() + "," +
                     log.time[i].ToString() + "," +
                     log.roundTimer[i].ToString() + "," +

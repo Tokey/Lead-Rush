@@ -49,7 +49,8 @@ public class EnemyManager : MonoBehaviour
 
         if (remainingTeleportTimeFromLastEnemy > 0f)
         {
-            spawnTimer = remainingTeleportTimeFromLastEnemy;
+            //spawnTimer = remainingTeleportTimeFromLastEnemy;
+            spawnTimer = 0;
             remainingTeleportTimeFromLastEnemy = 0f;
         }
 

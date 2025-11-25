@@ -106,7 +106,7 @@ public class GameUI : MonoBehaviour
         else if (enemy != null)
         {
 
-            var relativePoint = player.transform.InverseTransformPoint(enemy.transform.position);
+            /*var relativePoint = player.transform.InverseTransformPoint(enemy.transform.position);
 
             float distance = Vector3.Distance(player.transform.position, enemy.transform.position);
 
@@ -179,7 +179,7 @@ public class GameUI : MonoBehaviour
                 highAlertLeft.gameObject.SetActive(false);
                 highAlertTop.gameObject.SetActive(false);
 
-            }
+            }*/
 
             enemyRespawningText.SetActive(false);
         }

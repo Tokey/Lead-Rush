@@ -275,8 +275,8 @@ MonoBehaviour:
   teleportRadius: 7
   teleportYMin: 0
   teleportYMax: 3
-  teleportRandSuperMin: 0.5
-  teleportRandSuperMax: 2
+  teleportRandSuperMin: 0.75
+  teleportRandSuperMax: 1.75
   teleportFOV: 0.6
   teleportMoveDuration: 0.05
   lateralMoveSpeed: 1
@@ -1081,6 +1081,10 @@ PrefabInstance:
     - target: {fileID: 815897628672023783, guid: c1937f972ff9beb43a6c954f5a39a304, type: 3}
       propertyPath: m_Name
       value: Forest aura
+      objectReference: {fileID: 0}
+    - target: {fileID: 815897628672023783, guid: c1937f972ff9beb43a6c954f5a39a304, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7849008332624520820, guid: c1937f972ff9beb43a6c954f5a39a304, type: 3}
       propertyPath: m_LocalScale.x

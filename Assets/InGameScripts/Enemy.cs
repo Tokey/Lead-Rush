@@ -148,14 +148,15 @@ public class Enemy : MonoBehaviour
 
         mainCamera = Camera.main;
 
-
+        float teleportIntAdd = 0f;
         // Randomize the first interval
 
         //Non uniform random
         float min = UnityEngine.Random.Range(teleportRandSuperMin, teleportIntervalMin);
         float max = UnityEngine.Random.Range(teleportIntervalMax, teleportRandSuperMax);
 
-        float teleportIntAdd = playerController.gameManager.delayDuration / 1000.0f;
+        // adds delay duration if using temporal AS
+            teleportIntAdd = (playerController.gameManager.delayDuration / 1000.0f) * roundManager.roundConfigs.temporalASMagnitude[roundManager.indexArray[roundManager.currentRoundNumber - 1]];
 
         teleportInterval = UnityEngine.Random.Range(teleportIntAdd + min, teleportIntAdd + max);
 
@@ -391,6 +392,7 @@ private void StartLateralMovementRandomDirection()
             float timeLeft = teleportInterval - teleportTimer;
             enemyManager.remainingTeleportTimeFromLastEnemy = Mathf.Max(0f, timeLeft);
 
+            player.GetComponent<FPSController>().eventCount++;
             fPSController.UpdatePerShootingEventLog(true);
 
             Destroy(gameObject);
@@ -417,7 +419,7 @@ private void StartLateralMovementRandomDirection()
             {
                 textWriter.WriteLine(
                     "SessionID,LatinRow,RoundNumber,SessionStart,KillTimestamp,RoundFPS,SpikeMagnitude," +
-                    "OnAimSpike,OnEnemySpawnSpike,OnMouseSpike,OnReloadSpike,AttributeScalingEnabled," + "AttributeScaleRadius," + "EnemyMoveSpeed," + "PredictableEnemyMovement," +
+                    "OnAimSpike,OnEnemySpawnSpike,OnMouseSpike,OnReloadSpike,AttributeScalingEnabled," + "AttributeScaleRadius," + "EnemyMoveSpeed," + "PredictableEnemyMovement," + "UsingTemporalAS," +
                     "RoundIndex,EnemyHealth,MinAngleToPlayer,AngularSizeOnSpawn," +
                     "DegreeToTargetX,DegreeToTargetY,DegreeToShootX,DegreeToShootY," +
                     "TimeToTargetEnemy,TimeToHitEnemy,TimeToKillEnemy," +
@@ -441,6 +443,7 @@ private void StartLateralMovementRandomDirection()
                roundManager.roundConfigs.attributeScaleRadius[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.roundConfigs.enemyLateralMoveSpeed[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.roundConfigs.predictableEnemyMovement[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
+               roundManager.roundConfigs.temporalASMagnitude[roundManager.indexArray[roundManager.currentRoundNumber - 1]].ToString() + "," +
                roundManager.indexArray[roundManager.currentRoundNumber - 1].ToString() + "," +
                currentHealth.ToString("F2") + "," +
                minAngleToPlayer.ToString("F2") + "," +
@@ -692,6 +695,8 @@ private void StartLateralMovementRandomDirection()
             teleportTimer = 0f;
             TrySetTeleportTarget();
             player.GetComponent<FPSController>().UpdatePerShootingEventLog(false);
+            player.GetComponent<FPSController>().eventCount++;
+
         }
     }
 
